@@ -25,6 +25,8 @@ Useful wave fields:
 - `spawnPointStartIndex` and `spawnPointEndIndex`: limits which points from `spawnPoints` are active.
 - `minSpawnDistance`, `enforceMinSpawnDistance`, `pushSpawnAway`: protect against spawning too close to the player.
 - `alwaysSearchPlayer`: makes non-combat search movement advance toward the player even outside the global search radius.
+- `searchAroundHomeOnly`: makes non-combat search movement investigate near the spawn/home area instead of using the player's exact position.
+- `searchMovementType`, `searchStepDistance`, `searchRadius`, `searchLeashDistance`, `searchStopDistance`, `searchAlwaysUseStealth`, `searchAlertStatusEffects`: tune local alert-search movement and visual alert state. Use `Strafe` for tactical weapon-ready searching; keep `searchAlwaysUseStealth` off unless you want crouch/kneel-style movement.
 - `forceMeleeAttack`: tells the runtime to use melee attack commands once combat starts.
 
 Runtime code lives in `../src/`:

@@ -113,7 +113,7 @@ function AI:makeCommand(commandName)
     return cmd
 end
 
-function AI:makeMoveCommand(positionSpec, movementType, desiredDistance, finishWhenDestinationReached)
+function AI:makeMoveCommand(positionSpec, movementType, desiredDistance, finishWhenDestinationReached, options)
     local cmd = nil
 
     pcall(function()
@@ -133,11 +133,44 @@ function AI:makeMoveCommand(positionSpec, movementType, desiredDistance, finishW
 
     pcall(function() cmd.movementTarget = positionSpec end)
     pcall(function() cmd.rotateEntityTowardsFacingTarget = true end)
-    pcall(function() cmd.ignoreNavigation = self.settings.CHASE_IGNORE_NAVIGATION end)
+
+    if options and options.facingTargetSpec then
+        pcall(function() cmd.facingTarget = options.facingTargetSpec end)
+        pcall(function() cmd.rotateEntityTowardsFacingTarget = true end)
+    end
+
+    local ignoreNavigation = self.settings.CHASE_IGNORE_NAVIGATION
+    if options and options.ignoreNavigation ~= nil then
+        ignoreNavigation = options.ignoreNavigation == true
+    end
+
+    pcall(function() cmd.ignoreNavigation = ignoreNavigation end)
     pcall(function() cmd.desiredDistanceFromTarget = stopDistance end)
     pcall(function() cmd.finishWhenDestinationReached = finishWhenDestinationReached ~= false end)
     pcall(function() cmd.movementType = Enum.new("moveMovementType", movement) end)
     pcall(function() cmd.movementType = movement end)
+
+    if options then
+        if options.alwaysUseStealth ~= nil then
+            pcall(function() cmd.alwaysUseStealth = options.alwaysUseStealth == true end)
+        end
+
+        if options.useStart ~= nil then
+            pcall(function() cmd.useStart = options.useStart == true end)
+        end
+
+        if options.useStop ~= nil then
+            pcall(function() cmd.useStop = options.useStop == true end)
+        end
+
+        if options.removeAfterCombat ~= nil then
+            pcall(function() cmd.removeAfterCombat = options.removeAfterCombat == true end)
+        end
+
+        if options.ignoreInCombat ~= nil then
+            pcall(function() cmd.ignoreInCombat = options.ignoreInCombat == true end)
+        end
+    end
 
     return cmd
 end
@@ -228,7 +261,30 @@ function AI:setAggressiveCombatPreset(npc)
     return self:sendCommand(npc, cmd)
 end
 
-function AI:sendMoveToPosition(npc, targetPos, movementType, desiredDistance, logLabel)
+function AI:switchToPrimaryWeapon(npc)
+    local cmd = self:makeCommand("AISwitchToPrimaryWeaponCommand")
+    if not cmd then return false end
+
+    pcall(function() cmd.unEquip = false end)
+
+    return self:sendCommand(npc, cmd)
+end
+
+function AI:sendLookAtTarget(npc, duration)
+    local playerRef = self:getPlayerEntityReference()
+    if not playerRef then return false end
+
+    local cmd = self:makeCommand("AIInjectLookatTargetCommand")
+    if not cmd then return false end
+
+    pcall(function() cmd.targetPuppetRef = playerRef end)
+    pcall(function() cmd.duration = duration or 10.0 end)
+    pcall(function() cmd.immediately = true end)
+
+    return self:sendCommand(npc, cmd)
+end
+
+function AI:sendMoveToPosition(npc, targetPos, movementType, desiredDistance, logLabel, options)
     if not npc or not targetPos then return false end
 
     self:wake(npc)
@@ -242,7 +298,26 @@ function AI:sendMoveToPosition(npc, targetPos, movementType, desiredDistance, lo
 
     if not positionSpec then return false end
 
-    local cmd = self:makeMoveCommand(positionSpec, movementType, desiredDistance)
+    local moveOptions = options
+
+    if options and options.facingTarget then
+        local facingSpec = self:makePositionSpec({
+            x = options.facingTarget.x,
+            y = options.facingTarget.y,
+            z = options.facingTarget.z,
+            w = 1
+        })
+
+        if facingSpec then
+            moveOptions = {}
+            for key, value in pairs(options) do
+                moveOptions[key] = value
+            end
+            moveOptions.facingTargetSpec = facingSpec
+        end
+    end
+
+    local cmd = self:makeMoveCommand(positionSpec, movementType, desiredDistance, nil, moveOptions)
 
     if not cmd then
         self.log(tostring(logLabel or "MoveToPosition") .. " FAILED: could not create AIMoveToCommand")
@@ -319,6 +394,30 @@ function AI:prime(npc)
     end)
 end
 
+function AI:primeSearchAlert(npc, wave)
+    if not npc then return end
+
+    self:prime(npc)
+    self:setAggressiveCombatPreset(npc)
+    self:switchToPrimaryWeapon(npc)
+    self:sendLookAtTarget(npc, 10.0)
+
+    pcall(function()
+        local player = Game.GetPlayer()
+        local stim = npc:GetStimReactionComponent()
+        if player and stim then
+            stim:ActivateReactionLookAt(player, true, false, 10.0, true)
+        end
+    end)
+
+    local statuses = (wave and wave.searchAlertStatusEffects) or self.settings.SEARCH_ALERT_STATUS_EFFECTS
+    if type(statuses) ~= "table" then return end
+
+    for _, statusId in ipairs(statuses) do
+        self:applyStatusEffect(npc, statusId)
+    end
+end
+
 function AI:isNPCInCombat(npc)
     if not npc then return false end
 
@@ -378,7 +477,7 @@ function AI:shouldForceCombatWithPlayer(npc)
     return self:isPlayerInCombat() and dist <= self.settings.COMBAT_JOIN_DISTANCE
 end
 
-function AI:sendSearchMoveAroundHome(npc)
+function AI:sendSearchMoveAroundHome(npc, allowPlayerDirectedSearch)
     if not npc or self:isNPCInCombat(npc) then return false end
 
     local meta = self.state.spawnedObjectMetas[npc]
@@ -404,7 +503,14 @@ function AI:sendSearchMoveAroundHome(npc)
         end
     end)
 
-    if playerPos then
+    local localSearchOnly = wave and wave.searchAroundHomeOnly == true
+    local canUsePlayerPosition = (not localSearchOnly) or allowPlayerDirectedSearch == true
+
+    if localSearchOnly then
+        self:primeSearchAlert(npc, wave)
+    end
+
+    if playerPos and canUsePlayerPosition then
         local distToPlayer = self.geometry.distance(currentPos, playerPos)
         local homeDistToPlayer = self.geometry.distance(home, playerPos)
         local searchRadius = (wave and wave.searchPlayerRadius) or self.settings.SEARCH_PLAYER_RADIUS
@@ -440,14 +546,34 @@ function AI:sendSearchMoveAroundHome(npc)
         end
     end
 
-    if target == home and self.geometry.distance(currentPos, home) <= self.settings.SEARCH_LEASH_DISTANCE then
+    local searchLeashDistance = (wave and wave.searchLeashDistance) or self.settings.SEARCH_LEASH_DISTANCE
+
+    if target == home and self.geometry.distance(currentPos, home) <= searchLeashDistance then
         local phase = ((meta.spawnIndex or 1) * 1.618) + (math.floor(self.state.elapsed / self.settings.CHASE_PLAYER_INTERVAL) * 0.9)
+        local searchRadius = (wave and wave.searchRadius) or self.settings.SEARCH_RADIUS
 
         target = {
-            x = home.x + math.cos(phase) * self.settings.SEARCH_RADIUS,
-            y = home.y + math.sin(phase) * self.settings.SEARCH_RADIUS,
+            x = home.x + math.cos(phase) * searchRadius,
+            y = home.y + math.sin(phase) * searchRadius,
             z = home.z,
             w = 1
+        }
+
+        logLabel =
+            "SearchMoveLocal | wave=" ..
+            tostring(wave and wave.name or "unknown")
+    end
+
+    local searchMoveOptions = nil
+
+    if localSearchOnly then
+        searchMoveOptions = {
+            alwaysUseStealth = wave and wave.searchAlwaysUseStealth == true,
+            facingTarget = playerPos,
+            useStart = true,
+            useStop = true,
+            removeAfterCombat = true,
+            ignoreInCombat = false
         }
     end
 
@@ -455,8 +581,9 @@ function AI:sendSearchMoveAroundHome(npc)
         npc,
         target,
         (wave and wave.searchMovementType) or self.settings.SEARCH_MOVEMENT_TYPE,
-        self.settings.SEARCH_STOP_DISTANCE,
-        logLabel
+        (wave and wave.searchStopDistance) or self.settings.SEARCH_STOP_DISTANCE,
+        logLabel,
+        searchMoveOptions
     )
 end
 
@@ -506,7 +633,7 @@ function AI:chase(npc, forceCommand)
 
     if wave and wave.disableDirectChase then
         self:prime(npc)
-        self:sendSearchMoveAroundHome(npc)
+        self:sendSearchMoveAroundHome(npc, true)
         return
     end
 
@@ -515,7 +642,7 @@ function AI:chase(npc, forceCommand)
 
     if not forceCommand and dist > directChaseDistance then
         self:prime(npc)
-        self:sendSearchMoveAroundHome(npc)
+        self:sendSearchMoveAroundHome(npc, true)
         return
     end
 
@@ -810,7 +937,7 @@ function AI:updateEncounterNPC(npc, allowSearchMove)
     if self:isNPCInCombat(npc) or self:shouldForceCombatWithPlayer(npc) then
         self:chase(npc, false)
     elseif allowSearchMove then
-        self:sendSearchMoveAroundHome(npc)
+        self:sendSearchMoveAroundHome(npc, false)
     end
 end
 

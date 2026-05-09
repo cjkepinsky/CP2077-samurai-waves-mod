@@ -156,8 +156,8 @@ return function(CharacterTDBID)
         },
 
         huntersLine = {
-            edgeA = { x = -1061.0544, y = -1549.3015, z = 25.803192, w = 1 },
-            edgeB = { x = -1044.3536, y = -1559.1191, z = 25.803192, w = 1 }
+            edgeA = { x = -1078.7885, y = -1528.4915, z = 25.779922, w = 1 },
+            edgeB = { x = -1102.7998, y = -1514.9469, z = 25.779922, w = 1 }
         },
 
         smartHuntersPoints = {
@@ -190,6 +190,17 @@ return function(CharacterTDBID)
         }
     }
 
+    local cautiousSearchMovementType = "Strafe"
+    local cautiousSearchStepDistance = 3.0
+    local alertSearchRadius = 12.0
+    local alertSearchLeashDistance = 24.0
+    local alertSearchStopDistance = 2.5
+    local alertSearchAlwaysUseStealth = false
+    local alertSearchStatusEffects = {
+        "Senses.Alerted",
+        "BaseStatusEffect.IgnoreWeaponSafe"
+    }
+
     local waves = {
         {
             name = "Wave 1 - Crickets Club",
@@ -204,6 +215,14 @@ return function(CharacterTDBID)
             disableDirectChase = true,
             -- pushSpawnAway = true,
             alwaysSearchPlayer = true,
+            searchAroundHomeOnly = true,
+            searchMovementType = cautiousSearchMovementType,
+            searchStepDistance = cautiousSearchStepDistance,
+            searchRadius = alertSearchRadius,
+            searchLeashDistance = alertSearchLeashDistance,
+            searchStopDistance = alertSearchStopDistance,
+            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
+            searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
             startMessage = "Members of Crickets Club are after you!",
             forceMeleeAttack = true
@@ -220,6 +239,14 @@ return function(CharacterTDBID)
             lockSpawnPosition = true,
             disableDirectChase = true,
             alwaysSearchPlayer = true,
+            searchAroundHomeOnly = true,
+            searchMovementType = cautiousSearchMovementType,
+            searchStepDistance = cautiousSearchStepDistance,
+            searchRadius = alertSearchRadius,
+            searchLeashDistance = alertSearchLeashDistance,
+            searchStopDistance = alertSearchStopDistance,
+            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
+            searchAlertStatusEffects = alertSearchStatusEffects,
             pushSpawnAway = true,
             disablePostSpawnCorrection = true,
             startMessage = "THE BAT BOYS ARE COMING",
@@ -234,6 +261,14 @@ return function(CharacterTDBID)
             lockSpawnPosition = true,
             disableDirectChase = true,
             alwaysSearchPlayer = true,
+            searchAroundHomeOnly = true,
+            searchMovementType = cautiousSearchMovementType,
+            searchStepDistance = cautiousSearchStepDistance,
+            searchRadius = alertSearchRadius,
+            searchLeashDistance = alertSearchLeashDistance,
+            searchStopDistance = alertSearchStopDistance,
+            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
+            searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
             startMessage = "Lookout! Meatheads are preparing an ambush.",
             forceMeleeAttack = true
@@ -245,9 +280,17 @@ return function(CharacterTDBID)
             npcs = npcs.cowboys,
             fallbackNpc = C("valentinos_grunt2_ranged2_overture_ma"),
             spawnLine = locations.cowboysLine,
-            alwaysSearchPlayer = true,
             lockSpawnPosition = true,
-            disableAIMovement = true,
+            disableDirectChase = true,
+            alwaysSearchPlayer = true,
+            searchAroundHomeOnly = true,
+            searchMovementType = cautiousSearchMovementType,
+            searchStepDistance = cautiousSearchStepDistance,
+            searchRadius = alertSearchRadius,
+            searchLeashDistance = alertSearchLeashDistance,
+            searchStopDistance = alertSearchStopDistance,
+            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
+            searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
             startMessage = "Few Cowboys Club members are angry at you!"
         },
@@ -259,8 +302,16 @@ return function(CharacterTDBID)
             fallbackNpc = C("maelstom_strong_shotgun2_carnage_ma_rare"),
             spawnLine = locations.powerPeopleLine,
             lockSpawnPosition = true,
+            disableDirectChase = true,
             alwaysSearchPlayer = true,
-            disableAIMovement = true,
+            searchAroundHomeOnly = true,
+            searchMovementType = cautiousSearchMovementType,
+            searchStepDistance = cautiousSearchStepDistance,
+            searchRadius = alertSearchRadius,
+            searchLeashDistance = alertSearchLeashDistance,
+            searchStopDistance = alertSearchStopDistance,
+            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
+            searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
             startMessage = "Wake up! Power People Club members got enough ammo to shoot you."
         },
@@ -271,7 +322,16 @@ return function(CharacterTDBID)
             npcs = npcs.hunters,
             spawnLine = locations.huntersLine,
             lockSpawnPosition = true,
-            disableAIMovement = true,
+            disableDirectChase = true,
+            alwaysSearchPlayer = true,
+            searchAroundHomeOnly = true,
+            searchMovementType = cautiousSearchMovementType,
+            searchStepDistance = cautiousSearchStepDistance,
+            searchRadius = alertSearchRadius,
+            searchLeashDistance = alertSearchLeashDistance,
+            searchStopDistance = alertSearchStopDistance,
+            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
+            searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
             startMessage = "Hunters Club: Hunting season has begun, and you are the prey."
         },
@@ -285,6 +345,14 @@ return function(CharacterTDBID)
             lockSpawnPosition = true,
             disableDirectChase = true,
             alwaysSearchPlayer = true,
+            searchAroundHomeOnly = true,
+            searchMovementType = cautiousSearchMovementType,
+            searchStepDistance = cautiousSearchStepDistance,
+            searchRadius = alertSearchRadius,
+            searchLeashDistance = alertSearchLeashDistance,
+            searchStopDistance = alertSearchStopDistance,
+            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
+            searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
             startMessage = "These Hunters are smarter, in some way."
         },
@@ -297,6 +365,14 @@ return function(CharacterTDBID)
             lockSpawnPosition = true,
             disableDirectChase = true,
             alwaysSearchPlayer = true,
+            searchAroundHomeOnly = true,
+            searchMovementType = cautiousSearchMovementType,
+            searchStepDistance = cautiousSearchStepDistance,
+            searchRadius = alertSearchRadius,
+            searchLeashDistance = alertSearchLeashDistance,
+            searchStopDistance = alertSearchStopDistance,
+            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
+            searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
             startMessage = "SAMURAIS CLUB: THE BLADE KNOWS NO FEAR, V.",
             forceMeleeAttack = true

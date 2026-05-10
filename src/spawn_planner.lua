@@ -64,6 +64,21 @@ function SpawnPlanner:getFallbackLinePoint(lineIndex, count, spawnIndex)
     return self.geometry.linePoint(line.edgeA, line.edgeB, count, spawnIndex)
 end
 
+function SpawnPlanner:getWaveLinePoint(wave, count, spawnIndex)
+    if wave.spawnLineRows and wave.spawnLineRows > 1 then
+        return self.geometry.lineGridPoint(
+            wave.spawnLine.edgeA,
+            wave.spawnLine.edgeB,
+            count,
+            spawnIndex,
+            wave.spawnLineRows,
+            wave.spawnLineRowSpacing
+        )
+    end
+
+    return self.geometry.linePoint(wave.spawnLine.edgeA, wave.spawnLine.edgeB, count, spawnIndex)
+end
+
 function SpawnPlanner:getConfiguredSpawnPoint(wave, spawnIndex)
     if wave.spawnPoints and #wave.spawnPoints > 0 then
         local player = Game.GetPlayer()
@@ -83,7 +98,7 @@ function SpawnPlanner:getConfiguredSpawnPoint(wave, spawnIndex)
             return wave.extraSpawnPoint
         end
 
-        return self.geometry.linePoint(wave.spawnLine.edgeA, wave.spawnLine.edgeB, wave.count, spawnIndex)
+        return self:getWaveLinePoint(wave, wave.count, spawnIndex)
     end
 
     return self:getFallbackLinePoint(wave.safeLine or 1, wave.count, spawnIndex)
@@ -158,7 +173,7 @@ function SpawnPlanner:getFarthestSpawnPointFromPlayer(wave, spawnIndex)
 
     if wave.spawnLine then
         for i = 1, wave.count do
-            local point = self.geometry.linePoint(wave.spawnLine.edgeA, wave.spawnLine.edgeB, wave.count, i)
+            local point = self:getWaveLinePoint(wave, wave.count, i)
             local d = self.geometry.distance(playerPos, point)
 
             if d > bestDistance then

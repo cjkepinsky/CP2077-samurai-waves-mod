@@ -21,8 +21,15 @@ Useful wave fields:
 - `markerPos`: explicit marker location. If omitted, the first spawn point or start of the spawn line is used.
 - `spawnPoints`: exact spawn positions.
 - `spawnLine`: distributes NPCs between `edgeA` and `edgeB`.
+- `spawnLineRows` and `spawnLineRowSpacing`: optionally stagger line spawns into multiple parallel rows to avoid capsule overlap on dense waves.
 - `extraSpawnPoint` and `extraSpawnFromIndex`: sends later spawns to one fixed point.
 - `spawnPointStartIndex` and `spawnPointEndIndex`: limits which points from `spawnPoints` are active.
+- `humanNavmeshCheckRadius`: optional pre-spawn human navmesh lookup radius. If a point is valid, the spawn request uses that navmesh point.
+- `humanNavmeshRequired`: cancels the spawn when the pre-spawn human navmesh lookup fails. Leave this off for hand-placed waves where the engine's navmesh query rejects otherwise usable points.
+- `searchTargetHumanNavmeshCheckRadius`: optional human navmesh lookup radius for non-combat search movement targets. If omitted, search movement reuses `humanNavmeshCheckRadius`.
+- `skipEmptySpawnRetries`: skips fallback/same-position retries when the spawn system accepts a request but returns no spawned objects.
+- `minTrackedForCompletion`: optional per-wave override for the minimum number of tracked NPCs required before the wave can complete and pay its stash reward. Otherwise the global completion threshold from `settings.lua` is used.
+- `treasure`: optional guarded stash config. Use `rewardMoney` for the eddies granted when the wave is cleared, and optional `pos` to place the stash marker somewhere other than the middle of the spawn line.
 - `minSpawnDistance`, `enforceMinSpawnDistance`, `pushSpawnAway`: protect against spawning too close to the player.
 - `alwaysSearchPlayer`: makes non-combat search movement advance toward the player even outside the global search radius.
 - `searchAroundHomeOnly`: makes non-combat search movement investigate near the spawn/home area instead of using the player's exact position.
@@ -36,6 +43,7 @@ Runtime code lives in `../src/`:
 - `spawner.lua`: talks to `PreventionSpawnSystem`, tracks NPCs, retries bad spawns.
 - `ai.lua`: hostile/search/chase behavior and defeated-state checks.
 - `markers.lua`: map marker and GPS route handling.
+- `treasure.lua`: guarded stash marker and wave-clear reward handling.
 - `hud.lua`: player-facing messages.
 - `state.lua`: mutable mission/runtime state.
 

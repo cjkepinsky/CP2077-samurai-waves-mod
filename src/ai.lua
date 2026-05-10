@@ -206,6 +206,121 @@ function AI:getPlayerEntityReference()
     return nil
 end
 
+function AI:getNavigationSystem()
+    local ok, nav = pcall(function()
+        return Game.GetNavigationSystem()
+    end)
+
+    if ok and nav then return nav end
+
+    ok, nav = pcall(function()
+        return Game.GetAINavigationSystem()
+    end)
+
+    if ok and nav then return nav end
+
+    return nil
+end
+
+function AI:getHumanNavmeshAgentSize()
+    local ok, agentSize = pcall(function()
+        return Enum.new("NavGenAgentSize", "Human")
+    end)
+
+    if ok and agentSize then return agentSize end
+
+    ok, agentSize = pcall(function()
+        return NavGenAgentSize and NavGenAgentSize.Human
+    end)
+
+    if ok and agentSize then return agentSize end
+
+    return 0
+end
+
+function AI:extractNavmeshPoint(result, alternatePoint)
+    local function asPoint(candidate)
+        if not candidate then return nil end
+
+        local ok, x, y, z, w = pcall(function()
+            return candidate.x, candidate.y, candidate.z, candidate.w
+        end)
+
+        if ok and x and y and z then
+            return { x = x, y = y, z = z, w = w or 1 }
+        end
+
+        return nil
+    end
+
+    local point = asPoint(result)
+    if point then return point end
+
+    if result then
+        local okPoint, resultPoint = pcall(function()
+            return result.point
+        end)
+
+        if okPoint then
+            point = asPoint(resultPoint)
+        end
+
+        if point then return point end
+    end
+
+    return asPoint(alternatePoint)
+end
+
+function AI:findHumanNavmeshPoint(pos, radius)
+    local nav = self:getNavigationSystem()
+    if not nav then return nil end
+
+    local origin = self.geometry.toV4(pos)
+    local agentSize = self:getHumanNavmeshAgentSize()
+    local attempts = {
+        function()
+            return nav:FindPointInSphereOnlyHumanNavmesh(origin, radius, agentSize, false)
+        end,
+        function()
+            return nav.FindPointInSphereOnlyHumanNavmesh(nav, origin, radius, agentSize, false)
+        end,
+        function()
+            return nav:FindPointInSphereOnlyHumanNavmesh(origin, radius, 0, false)
+        end,
+        function()
+            return nav.FindPointInSphereOnlyHumanNavmesh(nav, origin, radius, 0, false)
+        end
+    }
+
+    for _, attempt in ipairs(attempts) do
+        local ok, result, alternatePoint = pcall(attempt)
+
+        if ok then
+            local point = self:extractNavmeshPoint(result, alternatePoint)
+
+            if point then
+                local navPos = { x = point.x, y = point.y, z = point.z, w = point.w or 1 }
+
+                if self.geometry.distance(pos, navPos) <= radius + 0.01 then
+                    return navPos
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+function AI:projectSearchTargetToHumanNavmesh(wave, target, fallback)
+    local radius = wave and (wave.searchTargetHumanNavmeshCheckRadius or wave.humanNavmeshCheckRadius) or nil
+    if not radius or radius <= 0 then return target end
+
+    local navPos = self:findHumanNavmeshPoint(target, radius)
+    if navPos then return navPos end
+
+    return fallback or target
+end
+
 function AI:sendCommand(npc, cmd)
     if not npc or not cmd then return false end
 
@@ -577,6 +692,8 @@ function AI:sendSearchMoveAroundHome(npc, allowPlayerDirectedSearch)
         }
     end
 
+    target = self:projectSearchTargetToHumanNavmesh(wave, target, home)
+
     return self:sendMoveToPosition(
         npc,
         target,
@@ -655,14 +772,14 @@ function AI:chase(npc, forceCommand)
     self:sendMoveToPlayer(npc, forceCommand)
 end
 
-function AI:isNPCDefeated(npc)
-    if not npc then return true end
+function AI:isNPCConfirmedDefeated(npc)
+    if not npc then return false end
 
     local okDefined, defined = pcall(function()
         return IsDefined(npc)
     end)
 
-    if not okDefined or defined ~= true then return true end
+    if not okDefined or defined ~= true then return false end
 
     local checks = {
         "IsDead",
@@ -672,8 +789,7 @@ function AI:isNPCDefeated(npc)
         "IsUnconscious",
         "IsAboutToDie",
         "IsAboutToBeDefeated",
-        "IsAboutToDieOrDefeated",
-        "IsTurnedOffNoStatusEffect"
+        "IsAboutToDieOrDefeated"
     }
 
     for _, methodName in ipairs(checks) do
@@ -685,14 +801,6 @@ function AI:isNPCDefeated(npc)
 
         if ok and result == true then return true end
     end
-
-    local activeOk, active = pcall(function()
-        local method = npc.IsActive
-        if method then return method(npc) end
-        return true
-    end)
-
-    if activeOk and active == false then return true end
 
     local stateOk, state = pcall(function()
         return npc:GetHighLevelStateFromBlackboard()
@@ -709,8 +817,7 @@ function AI:isNPCDefeated(npc)
             string.find(stateText, "dead") or
             string.find(stateText, "defeat") or
             string.find(stateText, "unconscious") or
-            string.find(stateText, "incapacitat") or
-            string.find(stateText, "disabled")
+            string.find(stateText, "incapacitat")
         then
             return true
         end
@@ -746,6 +853,33 @@ function AI:isNPCDefeated(npc)
     end)
 
     return statusOk and hasStatus == true
+end
+
+function AI:isNPCDefeated(npc)
+    if not npc then return true end
+
+    local okDefined, defined = pcall(function()
+        return IsDefined(npc)
+    end)
+
+    if not okDefined or defined ~= true then return true end
+    if self:isNPCConfirmedDefeated(npc) then return true end
+
+    local activeOk, active = pcall(function()
+        local method = npc.IsActive
+        if method then return method(npc) end
+        return true
+    end)
+
+    if activeOk and active == false then return true end
+
+    local turnedOffOk, turnedOff = pcall(function()
+        local method = npc.IsTurnedOffNoStatusEffect
+        if method then return method(npc) end
+        return false
+    end)
+
+    return turnedOffOk and turnedOff == true
 end
 
 function AI:applyStatusEffect(npc, statusId)

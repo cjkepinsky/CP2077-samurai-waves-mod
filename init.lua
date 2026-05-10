@@ -71,6 +71,7 @@ local State = Helper.loadModFile("src/state.lua")
 local HUD = Helper.loadModFile("src/hud.lua")
 local SpawnPlanner = Helper.loadModFile("src/spawn_planner.lua")
 local MarkerManager = Helper.loadModFile("src/markers.lua")
+local Treasure = Helper.loadModFile("src/treasure.lua")
 local AIManager = Helper.loadModFile("src/ai.lua")
 local Spawner = Helper.loadModFile("src/spawner.lua")
 local MissionController = Helper.loadModFile("src/mission_controller.lua")
@@ -96,6 +97,13 @@ local markers = MarkerManager.new({
     state = state,
     planner = planner,
     geometry = Geometry,
+    log = log
+})
+
+local treasure = Treasure.new({
+    state = state,
+    geometry = Geometry,
+    hud = hud,
     log = log
 })
 
@@ -125,6 +133,7 @@ local mission = MissionController.new({
     geometry = Geometry,
     planner = planner,
     markers = markers,
+    treasure = treasure,
     hud = hud,
     ai = ai,
     spawner = spawner,

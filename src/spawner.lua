@@ -104,7 +104,10 @@ function Spawner:countPendingRequests()
 end
 
 function Spawner:hasPendingSpawnRequests()
-    return self:countPendingRequests() > 0 or #self.state.pendingNoHashRequests > 0
+    local maxPendingNoHash = self.settings.MAX_PENDING_NO_HASH_REQUESTS or 1
+    if maxPendingNoHash < 1 then maxPendingNoHash = 1 end
+
+    return self:countPendingRequests() > 0 or #self.state.pendingNoHashRequests >= maxPendingNoHash
 end
 
 function Spawner:countTrackedNPCs()
@@ -229,6 +232,259 @@ function Spawner:verifySpawnTransform(transform, expectedPos, playerPos, waveNam
     )
 
     return false
+end
+
+function Spawner:getNavigationSystem()
+    local ok, nav = pcall(function()
+        return Game.GetNavigationSystem()
+    end)
+
+    if ok and nav then return nav end
+
+    ok, nav = pcall(function()
+        return Game.GetAINavigationSystem()
+    end)
+
+    if ok and nav then return nav end
+
+    return nil
+end
+
+function Spawner:isNavmeshStatusOK(status)
+    if status == nil then return true end
+    if status == 0 then return true end
+
+    local okEnum, isOK = pcall(function()
+        return worldNavigationRequestStatus and status == worldNavigationRequestStatus.OK
+    end)
+
+    if okEnum and isOK then return true end
+
+    local text = string.lower(tostring(status))
+    return text == "ok" or string.find(text, "ok") ~= nil
+end
+
+function Spawner:getNavmeshResultStatus(result)
+    if not result then return nil end
+
+    local ok, status = pcall(function()
+        return result.status
+    end)
+
+    if ok then return status end
+    return nil
+end
+
+function Spawner:getHumanNavmeshAgentSize()
+    local ok, agentSize = pcall(function()
+        return Enum.new("NavGenAgentSize", "Human")
+    end)
+
+    if ok and agentSize then return agentSize end
+
+    ok, agentSize = pcall(function()
+        return NavGenAgentSize and NavGenAgentSize.Human
+    end)
+
+    if ok and agentSize then return agentSize end
+
+    return 0
+end
+
+function Spawner:extractNavmeshPoint(result, alternatePoint)
+    local function asPoint(candidate)
+        if not candidate then return nil end
+
+        local ok, x, y, z, w = pcall(function()
+            return candidate.x, candidate.y, candidate.z, candidate.w
+        end)
+
+        if ok and x and y and z then
+            return { x = x, y = y, z = z, w = w or 1 }
+        end
+
+        return nil
+    end
+
+    local point = asPoint(result)
+    if point then return point end
+
+    if result then
+        local okPoint, resultPoint = pcall(function()
+            return result.point
+        end)
+
+        if okPoint then
+            point = asPoint(resultPoint)
+        end
+
+        if point then
+            return point
+        end
+    end
+
+    return asPoint(alternatePoint)
+end
+
+function Spawner:findHumanNavmeshPoint(pos, radius)
+    local nav = self:getNavigationSystem()
+    if not nav then
+        return nil, nil, nil, "navigation system unavailable"
+    end
+
+    local origin = self.geometry.toV4(pos)
+    local agentSize = self:getHumanNavmeshAgentSize()
+
+    local attempts = {
+        {
+            name = "colon/vector/radius/human/false",
+            call = function()
+                return nav:FindPointInSphereOnlyHumanNavmesh(origin, radius, agentSize, false)
+            end
+        },
+        {
+            name = "dot/vector/radius/human/false",
+            call = function()
+                return nav.FindPointInSphereOnlyHumanNavmesh(nav, origin, radius, agentSize, false)
+            end
+        },
+        {
+            name = "colon/vector/radius/0/false",
+            call = function()
+                return nav:FindPointInSphereOnlyHumanNavmesh(origin, radius, 0, false)
+            end
+        },
+        {
+            name = "dot/vector/radius/0/false",
+            call = function()
+                return nav.FindPointInSphereOnlyHumanNavmesh(nav, origin, radius, 0, false)
+            end
+        }
+    }
+
+    local errors = {}
+    local function addAttemptError(message)
+        errors[#errors + 1] = message
+    end
+
+    for _, attempt in ipairs(attempts) do
+        local ok, result, alternatePoint = pcall(attempt.call)
+
+        if ok then
+            local status =
+                self:getNavmeshResultStatus(result) or
+                self:getNavmeshResultStatus(alternatePoint)
+            local point = self:extractNavmeshPoint(result, alternatePoint)
+
+            if point and self:isNavmeshStatusOK(status) then
+                local navPos = {
+                    x = point.x,
+                    y = point.y,
+                    z = point.z,
+                    w = point.w or 1
+                }
+                local distance = self.geometry.distance(pos, navPos)
+
+                if distance <= radius + 0.01 then
+                    return true, navPos, distance, tostring(status or "OK")
+                end
+
+                return false, nil, distance, "navmesh point outside radius"
+            end
+
+            if status ~= nil and not self:isNavmeshStatusOK(status) then
+                return false, nil, nil, "status=" .. tostring(status)
+            end
+
+            addAttemptError(attempt.name .. " returned no point")
+        else
+            addAttemptError(attempt.name .. " failed: " .. tostring(result))
+        end
+    end
+
+    if #errors > 0 then
+        return nil, nil, nil, table.concat(errors, " ; ")
+    end
+
+    return nil, nil, nil, "navmesh query returned no point"
+end
+
+function Spawner:applyHumanNavmeshCheck(wave, pos, spawnIndex)
+    local radius = wave and wave.humanNavmeshCheckRadius or nil
+    if not radius or radius <= 0 then return true, pos end
+    local required = wave and wave.humanNavmeshRequired == true
+
+    local ok, navPos, distance, detail = self:findHumanNavmeshPoint(pos, radius)
+
+    if ok and navPos then
+        self.log(
+            "Human navmesh check OK | wave=" ..
+            tostring(wave.name) ..
+            " | index=" ..
+            tostring(spawnIndex) ..
+            " | radius=" ..
+            tostring(radius) ..
+            " | offset=" ..
+            tostring(distance)
+        )
+
+        return true, navPos
+    end
+
+    if not required then
+        self.log(
+            "WARNING: human navmesh check failed; using configured spawn point | wave=" ..
+            tostring(wave.name) ..
+            " | index=" ..
+            tostring(spawnIndex) ..
+            " | radius=" ..
+            tostring(radius) ..
+            " | detail=" ..
+            tostring(detail) ..
+            " | x=" ..
+            tostring(pos.x) ..
+            " | y=" ..
+            tostring(pos.y) ..
+            " | z=" ..
+            tostring(pos.z)
+        )
+
+        return true, pos
+    end
+
+    if ok == nil then
+        self.log(
+            "ERROR: human navmesh check unavailable. Spawn cancelled | wave=" ..
+            tostring(wave.name) ..
+            " | index=" ..
+            tostring(spawnIndex) ..
+            " | radius=" ..
+            tostring(radius) ..
+            " | detail=" ..
+            tostring(detail)
+        )
+
+        return false, pos
+    end
+
+    self.log(
+        "ERROR: human navmesh check failed. Spawn cancelled | wave=" ..
+        tostring(wave.name) ..
+        " | index=" ..
+        tostring(spawnIndex) ..
+        " | radius=" ..
+        tostring(radius) ..
+        " | detail=" ..
+        tostring(detail) ..
+        " | x=" ..
+        tostring(pos.x) ..
+        " | y=" ..
+        tostring(pos.y) ..
+        " | z=" ..
+        tostring(pos.z)
+    )
+
+    return false, pos
 end
 
 function Spawner:teleportEntityToPos(entity, pos)
@@ -798,6 +1054,12 @@ function Spawner:requestSpawnItem(item)
         return
     end
 
+    local navmeshOK, navmeshPos = self:applyHumanNavmeshCheck(item.wave, finalPos, item.spawnIndex)
+    if not navmeshOK then return end
+
+    finalPos = navmeshPos
+    spawnDistance = self.geometry.distance(playerPos, finalPos)
+
     local npcTDBID = self.resolveTDBID(item.npc)
 
     if not npcTDBID then
@@ -861,6 +1123,7 @@ function Spawner:requestSpawnItem(item)
         usesExactSpawnPoints = usesExactSpawnPoints,
         minSpawnDistance = minSpawnDistance,
         enforceMinSpawnDistance = enforceMinSpawnDistance,
+        skipEmptySpawnRetries = item.wave.skipEmptySpawnRetries == true,
         disablePostSpawnCorrection = item.wave.disablePostSpawnCorrection == true
     }
 
@@ -927,7 +1190,16 @@ function Spawner:checkSpawnTimeouts()
                 tostring(meta.spawnIndex)
             )
 
-            self:requeueFallbackSpawn(meta, "hash spawn timeout")
+            if meta.skipEmptySpawnRetries then
+                self.log(
+                    "Spawn timeout retry skipped | wave=" ..
+                    tostring(meta.waveName) ..
+                    " | index=" ..
+                    tostring(meta.spawnIndex)
+                )
+            else
+                self:requeueFallbackSpawn(meta, "hash spawn timeout")
+            end
         end
     end
 
@@ -944,7 +1216,16 @@ function Spawner:checkSpawnTimeouts()
                 tostring(meta.spawnIndex)
             )
 
-            self:requeueFallbackSpawn(meta, "no-hash spawn timeout")
+            if meta.skipEmptySpawnRetries then
+                self.log(
+                    "Spawn timeout retry skipped | wave=" ..
+                    tostring(meta.waveName) ..
+                    " | index=" ..
+                    tostring(meta.spawnIndex)
+                )
+            else
+                self:requeueFallbackSpawn(meta, "no-hash spawn timeout")
+            end
         end
     end
 end

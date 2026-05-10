@@ -11,22 +11,52 @@ function Markers.new(deps)
 end
 
 function Markers:activateRoute(mappinId, pos)
+    local mappinSystem = Game.GetMappinSystem()
+    local positionSet = false
+    local activeSet = false
+    local trackingSet = false
+
     pcall(function()
-        Game.GetMappinSystem():SetMappinActive(mappinId, true)
+        mappinSystem:UntrackMappin()
     end)
 
-    local ok, err = pcall(function()
-        Game.GetMappinSystem():SetMappinTracked(mappinId, true)
+    positionSet = pcall(function()
+        mappinSystem:SetMappinPosition(mappinId, pos)
     end)
 
-    if not ok then
-        self.log("SetMappinTracked failed: " .. tostring(err))
+    activeSet = pcall(function()
+        mappinSystem:SetMappinActive(mappinId, true)
+    end)
+
+    local okTrackFunction, trackFunction = pcall(function()
+        return mappinSystem.SetMappinTracked
+    end)
+
+    if okTrackFunction and trackFunction then
+        trackingSet = pcall(function()
+            mappinSystem:SetMappinTracked(mappinId, true)
+        end)
     end
+
+    if not trackingSet then
+        pcall(function()
+            mappinSystem:SetMappinTrackingAlternative(mappinId, mappinId)
+        end)
+    end
+
+    self.log(
+        "Marker activated | positionSet=" ..
+        tostring(positionSet) ..
+        " | activeSet=" ..
+        tostring(activeSet) ..
+        " | trackingSet=" ..
+        tostring(trackingSet)
+    )
 end
 
 function Markers:deactivateRoute(mappinId)
     pcall(function()
-        Game.GetMappinSystem():SetMappinTracked(mappinId, false)
+        Game.GetMappinSystem():UntrackMappin()
     end)
 end
 

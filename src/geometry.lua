@@ -30,6 +30,38 @@ function Geometry.linePoint(edgeA, edgeB, count, index)
     }
 end
 
+function Geometry.lineGridPoint(edgeA, edgeB, count, index, rows, rowSpacing)
+    rows = math.max(1, math.floor(rows or 1))
+
+    if rows <= 1 then
+        return Geometry.linePoint(edgeA, edgeB, count, index)
+    end
+
+    local row = ((index - 1) % rows) + 1
+    local indexInRow = math.floor((index - 1) / rows) + 1
+    local countInRow = math.floor((count - row) / rows) + 1
+    if countInRow < 1 then countInRow = 1 end
+    local base = Geometry.linePoint(edgeA, edgeB, countInRow, indexInRow)
+
+    local dx = edgeB.x - edgeA.x
+    local dy = edgeB.y - edgeA.y
+    local len = math.sqrt(dx * dx + dy * dy)
+
+    if len < 0.01 then
+        return base
+    end
+
+    local spacing = rowSpacing or 1.0
+    local offset = (row - ((rows + 1) / 2)) * spacing
+
+    return {
+        x = base.x - (dy / len) * offset,
+        y = base.y + (dx / len) * offset,
+        z = base.z,
+        w = 1
+    }
+end
+
 function Geometry.pushAwayFromPlayer(player, wave, point, spawnIndex, minDistance, sideSpacing)
     if not player or not point then return point end
 

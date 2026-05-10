@@ -16,6 +16,7 @@ function MissionController.new(deps)
         geometry = deps.geometry,
         planner = deps.planner,
         markers = deps.markers,
+        treasure = deps.treasure,
         hud = deps.hud,
         ai = deps.ai,
         spawner = deps.spawner,
@@ -43,9 +44,38 @@ function MissionController:hasPendingWaveWork(waveIndex)
     return false
 end
 
+function MissionController:getTreasureFallbackPos(wave, firstQueuedPos)
+    if wave and wave.spawnLine then
+        return self.geometry.linePoint(wave.spawnLine.edgeA, wave.spawnLine.edgeB, 3, 2)
+    end
+
+    return firstQueuedPos
+end
+
+function MissionController:getWaveMinTrackedForCompletion(wave)
+    if not wave then return 1 end
+    local configured = tonumber(wave.minTrackedForCompletion)
+    if configured then
+        return math.max(1, math.floor(configured))
+    end
+
+    local ratio = self.settings.WAVE_COMPLETION_MIN_TRACKED_RATIO or 0.5
+    local floorCount = self.settings.WAVE_COMPLETION_MIN_TRACKED_COUNT or 3
+    local required = math.ceil((wave.count or 1) * ratio)
+
+    return math.max(1, math.min(wave.count or required, math.max(floorCount, required)))
+end
+
 function MissionController:countWaveNPCs(waveIndex)
     local total = 0
     local active = 0
+    local valid = 0
+    local defeated = 0
+    local unknown = 0
+
+    if not self.state.waveDefeatedObjects then self.state.waveDefeatedObjects = {} end
+    if not self.state.waveDefeatedObjects[waveIndex] then self.state.waveDefeatedObjects[waveIndex] = {} end
+    local defeatedObjects = self.state.waveDefeatedObjects[waveIndex]
 
     for _, npc in ipairs(self.state.spawnedObjects) do
         local meta = self.state.spawnedObjectMetas[npc]
@@ -53,13 +83,24 @@ function MissionController:countWaveNPCs(waveIndex)
         if meta and meta.waveIndex == waveIndex then
             total = total + 1
 
-            if not self.ai:isNPCDefeated(npc) then
-                active = active + 1
+            if defeatedObjects[npc] then
+                defeated = defeated + 1
+            elseif self.spawner:isDefined(npc) then
+                valid = valid + 1
+
+                if self.ai:isNPCConfirmedDefeated(npc) then
+                    defeatedObjects[npc] = true
+                    defeated = defeated + 1
+                else
+                    active = active + 1
+                end
+            else
+                unknown = unknown + 1
             end
         end
     end
 
-    return total, active
+    return total, active, valid, defeated, unknown
 end
 
 function MissionController:scheduleSpawnTracking(objects, meta)
@@ -83,10 +124,15 @@ end
 
 function MissionController:processSpawnTracking(objects, meta)
     local trackedThisResult = {}
+    if not self.state.waveAliveSeen then self.state.waveAliveSeen = {} end
 
     for _, spawnedObject in ipairs(objects) do
         if self.spawner:trackSpawnedObject(spawnedObject, meta) then
             table.insert(trackedThisResult, spawnedObject)
+
+            if meta and meta.waveIndex and not self.ai:isNPCConfirmedDefeated(spawnedObject) then
+                self.state.waveAliveSeen[meta.waveIndex] = true
+            end
         end
     end
 
@@ -128,6 +174,11 @@ function MissionController:queueWave(waveIndex)
     self.state.waveCompletionHandled = false
     self.state.lastWaveStartTime = self.state.elapsed
     self.state.lastCompletionWaitLogTime = nil
+    self.state.lastCompletionBlockedLogTime = nil
+    if not self.state.waveAliveSeen then self.state.waveAliveSeen = {} end
+    self.state.waveAliveSeen[waveIndex] = false
+    if not self.state.waveDefeatedObjects then self.state.waveDefeatedObjects = {} end
+    self.state.waveDefeatedObjects[waveIndex] = {}
     self.state.countdownLogTimer = 0
     self.state.waveCompletionTimer = 0
 
@@ -168,18 +219,24 @@ function MissionController:queueWave(waveIndex)
     end
 
     self.markers:setCombatMarker(firstQueuedPos, waveIndex)
+
+    if self.treasure then
+        self.treasure:activateForWave(waveIndex, wave, self:getTreasureFallbackPos(wave, firstQueuedPos))
+    end
 end
 
 function MissionController:forceWave(waveIndex)
     self.log("Manual force wave requested | wave=" .. tostring(waveIndex))
 
     self.markers:clear()
+    if self.treasure then self.treasure:clear() end
     self.spawner:despawnAll()
 
     self.state.currentWaveIndex = 0
     self.state.currentMarkerWaveIndex = nil
     self.state.waveCompletionHandled = false
     self.state.lastCompletionWaitLogTime = nil
+    self.state.lastCompletionBlockedLogTime = nil
 
     self:queueWave(waveIndex)
 end
@@ -195,15 +252,53 @@ function MissionController:updateWaveCompletion()
     if self:hasPendingWaveWork(self.state.currentWaveIndex) then return end
     if self.state.lastWaveStartTime ~= nil and self.state.elapsed - self.state.lastWaveStartTime < 3.0 then return end
 
-    local total, active = self:countWaveNPCs(self.state.currentWaveIndex)
+    local wave = self.waves[self.state.currentWaveIndex]
+    local minTrackedForCompletion = self:getWaveMinTrackedForCompletion(wave)
+    local total, active, valid, defeated, unknown = self:countWaveNPCs(self.state.currentWaveIndex)
 
-    if total <= 0 then
-        self.log(
-            "Wave completion waiting for first tracked NPC | wave=" ..
-            tostring(self.state.currentWaveIndex) ..
-            " | tracked=" ..
-            tostring(total)
-        )
+    if total < minTrackedForCompletion or self.state.waveAliveSeen[self.state.currentWaveIndex] ~= true then
+        if self.state.lastCompletionBlockedLogTime == nil or self.state.elapsed - self.state.lastCompletionBlockedLogTime >= 5.0 then
+            self.state.lastCompletionBlockedLogTime = self.state.elapsed
+
+            self.log(
+                "Wave completion blocked: wave was not fully established | wave=" ..
+                tostring(self.state.currentWaveIndex) ..
+                " | tracked=" ..
+                tostring(total) ..
+                " | valid=" ..
+                tostring(valid) ..
+                " | defeated=" ..
+                tostring(defeated) ..
+                " | unknown=" ..
+                tostring(unknown) ..
+                " | aliveSeen=" ..
+                tostring(self.state.waveAliveSeen[self.state.currentWaveIndex] == true) ..
+                " | required=" ..
+                tostring(minTrackedForCompletion)
+            )
+        end
+
+        return
+    end
+
+    if unknown > 0 then
+        if self.state.lastCompletionBlockedLogTime == nil or self.state.elapsed - self.state.lastCompletionBlockedLogTime >= 5.0 then
+            self.state.lastCompletionBlockedLogTime = self.state.elapsed
+
+            self.log(
+                "Wave completion blocked: tracked NPCs lost before confirmed defeat | wave=" ..
+                tostring(self.state.currentWaveIndex) ..
+                " | active=" ..
+                tostring(active) ..
+                " | valid=" ..
+                tostring(valid) ..
+                " | defeated=" ..
+                tostring(defeated) ..
+                " | unknown=" ..
+                tostring(unknown)
+            )
+        end
+
         return
     end
 
@@ -217,7 +312,30 @@ function MissionController:updateWaveCompletion()
                 " | active=" ..
                 tostring(active) ..
                 " | tracked=" ..
-                tostring(total)
+                tostring(total) ..
+                " | valid=" ..
+                tostring(valid) ..
+                " | defeated=" ..
+                tostring(defeated) ..
+                " | unknown=" ..
+                tostring(unknown)
+            )
+        end
+
+        return
+    end
+
+    if defeated < minTrackedForCompletion then
+        if self.state.lastCompletionBlockedLogTime == nil or self.state.elapsed - self.state.lastCompletionBlockedLogTime >= 5.0 then
+            self.state.lastCompletionBlockedLogTime = self.state.elapsed
+
+            self.log(
+                "Wave completion blocked: not enough confirmed defeats | wave=" ..
+                tostring(self.state.currentWaveIndex) ..
+                " | defeated=" ..
+                tostring(defeated) ..
+                " | required=" ..
+                tostring(minTrackedForCompletion)
             )
         end
 
@@ -226,16 +344,21 @@ function MissionController:updateWaveCompletion()
 
     self.state.waveCompletionHandled = true
     self.state.lastCompletionWaitLogTime = nil
+    local completedWaveIndex = self.state.currentWaveIndex
 
     self.log(
         "Wave completed | wave=" ..
-        tostring(self.state.currentWaveIndex) ..
+        tostring(completedWaveIndex) ..
         " | trackedInWave=" ..
         tostring(total)
     )
 
-    if self.state.currentWaveIndex < #self.waves then
-        local nextWave = self.state.currentWaveIndex + 1
+    if self.treasure then
+        self.treasure:claimWave(completedWaveIndex)
+    end
+
+    if completedWaveIndex < #self.waves then
+        local nextWave = completedWaveIndex + 1
         self.state.currentWaveIndex = 0
         self.markers:setWaveMarker(nextWave)
         self.hud:show("Wave cleared. Go to the next location.")
@@ -253,6 +376,7 @@ function MissionController:startMission()
 
     self.spawner:despawnAll()
     self.markers:clear()
+    if self.treasure then self.treasure:clear() end
 
     self.state:resetMission()
     self.state:resetTimers()
@@ -276,8 +400,10 @@ function MissionController:stopMission()
     self.state.waveCompletionHandled = false
     self.state.lastWaveStartTime = nil
     self.state.lastCompletionWaitLogTime = nil
+    self.state.lastCompletionBlockedLogTime = nil
 
     self.markers:clear()
+    if self.treasure then self.treasure:clear() end
     self.spawner:despawnAll()
 
     self.hud:show(" ")
@@ -331,19 +457,25 @@ function MissionController:debugState()
     self.log("noHashPending=" .. tostring(#self.state.pendingNoHashRequests))
     self.log("delayedCombatActions=" .. tostring(#self.state.delayedCombatActions))
     self.log("pendingTeleportCorrections=" .. tostring(#self.state.pendingTeleportCorrections))
+    self.log("activeTreasure=" .. tostring(self.state.activeTreasure ~= nil))
     self.log("trackedNPCs=" .. tostring(self.spawner:countTrackedNPCs()))
     self.log("validNPCs=" .. tostring(self.spawner:countValidNPCs()))
     self.log("elapsed=" .. tostring(self.state.elapsed))
     self.log("lastWaveStartTime=" .. tostring(self.state.lastWaveStartTime))
     self.log("lastCompletionWaitLogTime=" .. tostring(self.state.lastCompletionWaitLogTime))
+    self.log("lastCompletionBlockedLogTime=" .. tostring(self.state.lastCompletionBlockedLogTime))
+    self.log("currentWaveAliveSeen=" .. tostring(self.state.waveAliveSeen[self.state.currentWaveIndex] == true))
     self.log("waveCompletionTimer=" .. tostring(self.state.waveCompletionTimer))
     self.log("chasePlayerTimer=" .. tostring(self.state.chasePlayerTimer))
     self.log("lastHUDText=" .. tostring(self.state.lastHUDText))
 
     if self.state.currentWaveIndex > 0 then
-        local total, active = self:countWaveNPCs(self.state.currentWaveIndex)
+        local total, active, valid, defeated, unknown = self:countWaveNPCs(self.state.currentWaveIndex)
         self.log("currentWaveTracked=" .. tostring(total))
         self.log("currentWaveActive=" .. tostring(active))
+        self.log("currentWaveValid=" .. tostring(valid))
+        self.log("currentWaveDefeated=" .. tostring(defeated))
+        self.log("currentWaveUnknown=" .. tostring(unknown))
     end
 
     local player = Game.GetPlayer()
@@ -452,6 +584,17 @@ function MissionController:onInit()
 
         if #objects == 0 then
             self.log("WARNING: accepted spawn result, but no spawned objects found")
+
+            if meta.skipEmptySpawnRetries then
+                self.log(
+                    "Empty spawn result retry skipped | wave=" ..
+                    tostring(meta.waveName) ..
+                    " | index=" ..
+                    tostring(meta.spawnIndex)
+                )
+
+                return
+            end
 
             if not self.spawner:requeueFallbackSpawn(meta, "accepted spawn result without objects") then
                 self.spawner:requeueSameSpawn(meta, "accepted spawn result without objects")

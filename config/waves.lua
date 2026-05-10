@@ -92,17 +92,11 @@ return function(CharacterTDBID)
     }
 
     local locations = {
---        start = { x = -1280.422, y = -74.429825, z = 7.931755, w = 1 },
-        -- ToVector4{ x = -1284.555, y = -114.614456, z = 16.123428, w = 1 }
-        start = { x = -1284.555, y = -114.614456, z = 16.123428, w = 1 },
+        start = { x = -1320.4529, y = -70.17114, z = 24.181656, w = 1 },
 
-        -- ToVector4{ x = -1274.8984, y = -105.02806, z = 16.123428, w = 1 }
-        -- ToVector4{ x = -1276.0852, y = -120.326294, z = 16.123428, w = 1 }
         cricketsLine = {
-            edgeA = { x = -1274.8984, y = -105.02806, z = 16.123428, w = 1 },
-            edgeB = { x = -1276.0852, y = -120.326294, z = 16.123428, w = 1 }
---            edgeA = { x = -1244.1971, y = -104.90228, z = 7.7323914, w = 1 },
---            edgeB = { x = -1241.8, y = -88.77179, z = 7.7323914, w = 1 }
+            edgeA = { x = -1320.4529, y = -70.17114, z = 24.181656, w = 1 },
+            edgeB = {  x = -1325.9106, y = -46.9088, z = 24.181656, w = 1 }
         },
 
         baseballsLine = {
@@ -138,8 +132,10 @@ return function(CharacterTDBID)
         },
 
         powerPeopleLine = {
-            edgeA = { x = -2261.3809, y = -2569.421, z = 25.301064, w = 1 },
-            edgeB = { x = -2238.669, y = -2575.5227, z = 25.30812, w = 1 }
+--            edgeA = { x = -2261.3809, y = -2569.421, z = 25.301064, w = 1 },
+--            edgeB = { x = -2238.669, y = -2575.5227, z = 25.30812, w = 1 }
+            edgeA = { x = -1896.2085, y = -2646.9531, z = 39.773796, w = 1 },
+            edgeB = {  x = -1897.711, y = -2638.749, z = 39.53881, w = 1 }
         },
 
         huntersPoints = {
@@ -185,8 +181,8 @@ return function(CharacterTDBID)
         },
 
         samuraisLine = {
-            edgeA = { x = -1069.0339, y = 1409.5846, z = 5.7562256, w = 1 },
-            edgeB = { x = -1069.9008, y = 1392.7639, z = 5.7562103, w = 1 }
+            edgeA = { x = -1057.466, y = 1199.5851, z = 0.19934082, w = 1 },
+            edgeB = { x = -1041.7489, y = 1210.875, z = 0.286911, w = 1 }
         }
     }
 
@@ -200,18 +196,26 @@ return function(CharacterTDBID)
         "Senses.Alerted",
         "BaseStatusEffect.IgnoreWeaponSafe"
     }
+    local stableHumanNavmeshCheckRadius = 1.0
+    local skipEmptySpawnRetries = true
 
     local waves = {
         {
             name = "Wave 1 - Crickets Club",
             club = "CRICKETS CLUB",
-            count = 7,
+            count = 20,
             npcs = npcs.crickets,
             fallbackNpc = C("gang_retaliation_enemies_sixthstreet_melee2_baton_wa"),
-            markerPos = locations.start, 
+            markerPos = locations.start,
             spawnLine = locations.cricketsLine,
             -- minSpawnDistance = 40.0,
             lockSpawnPosition = true,
+            spawnLineRows = 2,
+            spawnLineRowSpacing = 1.1,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            humanNavmeshRequired = true,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 10000 },
             disableDirectChase = true,
             -- pushSpawnAway = true,
             alwaysSearchPlayer = true,
@@ -230,13 +234,16 @@ return function(CharacterTDBID)
         {
             name = "Wave 2 - Baseballs Club",
             club = "BASEBALLS CLUB",
-            count = 7,
+            count = 20,
             npcs = npcs.baseballs,
             spawnLine = locations.baseballsLine,
             extraSpawnPoint = locations.baseballsExtraPoint,
             extraSpawnFromIndex = 6,
             minSpawnDistance = 35.0,
             lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 12500 },
             disableDirectChase = true,
             alwaysSearchPlayer = true,
             searchAroundHomeOnly = true,
@@ -255,10 +262,13 @@ return function(CharacterTDBID)
         {
             name = "Wave 3 - Blacksmiths Club",
             club = "BLACKSMITHS CLUB",
-            count = 10,
+            count = 15,
             npcs = npcs.blacksmiths,
             spawnLine = locations.blacksmithsLine,
             lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 15000 },
             disableDirectChase = true,
             alwaysSearchPlayer = true,
             searchAroundHomeOnly = true,
@@ -276,11 +286,14 @@ return function(CharacterTDBID)
         {
             name = "Wave 4 - Cowboys Club",
             club = "COWBOYS CLUB",
-            count = 10,
+            count = 20,
             npcs = npcs.cowboys,
             fallbackNpc = C("valentinos_grunt2_ranged2_overture_ma"),
             spawnLine = locations.cowboysLine,
             lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 17500 },
             disableDirectChase = true,
             alwaysSearchPlayer = true,
             searchAroundHomeOnly = true,
@@ -297,11 +310,14 @@ return function(CharacterTDBID)
         {
             name = "Wave 5 - Power People Club",
             club = "POWER PEOPLE CLUB",
-            count = 10,
+            count = 20,
             npcs = npcs.powerPeople,
             fallbackNpc = C("maelstom_strong_shotgun2_carnage_ma_rare"),
             spawnLine = locations.powerPeopleLine,
             lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 20000 },
             disableDirectChase = true,
             alwaysSearchPlayer = true,
             searchAroundHomeOnly = true,
@@ -318,10 +334,13 @@ return function(CharacterTDBID)
         {
             name = "Wave 6 - Hunters Club",
             club = "HUNTERS CLUB",
-            count = 12,
+            count = 20,
             npcs = npcs.hunters,
             spawnLine = locations.huntersLine,
             lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 22500 },
             disableDirectChase = true,
             alwaysSearchPlayer = true,
             searchAroundHomeOnly = true,
@@ -338,11 +357,14 @@ return function(CharacterTDBID)
         {
             name = "Wave 7 - Smart Hunters Club",
             club = "SMART HUNTERS CLUB",
-            count = 4,
+            count = 14,
             npcs = npcs.smartHunters,
-            fallbackNpc = C("cpz_maelstrom_grunt1_ranged1_lexington_wa"),
+            fallbackNpc = C("jpn_tyger_claws_gangster3_ranged3_sidewinder_ma"),
             spawnLine = locations.smartHuntersLine,
             lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 25000 },
             disableDirectChase = true,
             alwaysSearchPlayer = true,
             searchAroundHomeOnly = true,
@@ -359,10 +381,13 @@ return function(CharacterTDBID)
         {
             name = "Wave 8 - Samurais Club",
             club = "SAMURAIS CLUB",
-            count = 5,
+            count = 9,
             npcs = npcs.samurais,
             spawnLine = locations.samuraisLine,
             lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 30000 },
             disableDirectChase = true,
             alwaysSearchPlayer = true,
             searchAroundHomeOnly = true,

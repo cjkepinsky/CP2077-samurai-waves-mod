@@ -95,6 +95,7 @@ local hud = HUD.new({
 
 local markers = MarkerManager.new({
     state = state,
+    settings = settings,
     planner = planner,
     geometry = Geometry,
     log = log

@@ -66,6 +66,23 @@ function MissionController:getWaveMinTrackedForCompletion(wave)
     return math.max(1, math.min(wave.count or required, math.max(floorCount, required)))
 end
 
+function MissionController:getWaveUnknownRestartLimit(wave)
+    if wave then
+        local configured = tonumber(wave.unknownRestartLimit)
+
+        if configured then
+            return math.max(0, math.floor(configured))
+        end
+    end
+
+    local configured = tonumber(self.settings.WAVE_UNKNOWN_RESTART_LIMIT)
+    if configured then
+        return math.max(0, math.floor(configured))
+    end
+
+    return 0
+end
+
 function MissionController:countWaveNPCs(waveIndex)
     local total = 0
     local active = 0
@@ -101,6 +118,65 @@ function MissionController:countWaveNPCs(waveIndex)
     end
 
     return total, active, valid, defeated, unknown
+end
+
+function MissionController:handleUnknownWaveCollapse(waveIndex, total, defeated, unknown, minTrackedForCompletion)
+    if defeated > 0 then return false end
+    if total <= 0 then return false end
+    if unknown ~= total then return false end
+
+    local wave = self.waves[waveIndex]
+    local restartLimit = self:getWaveUnknownRestartLimit(wave)
+    if restartLimit <= 0 then return false end
+
+    if not self.state.waveUnknownRestartCounts then self.state.waveUnknownRestartCounts = {} end
+
+    local restartCount = self.state.waveUnknownRestartCounts[waveIndex] or 0
+
+    if restartCount >= restartLimit then
+        if self.state.lastCompletionBlockedLogTime == nil or self.state.elapsed - self.state.lastCompletionBlockedLogTime >= 5.0 then
+            self.state.lastCompletionBlockedLogTime = self.state.elapsed
+
+            self.log(
+                "Wave collapse restart limit reached; completion blocked | wave=" ..
+                tostring(waveIndex) ..
+                " | tracked=" ..
+                tostring(total) ..
+                " | unknown=" ..
+                tostring(unknown) ..
+                " | required=" ..
+                tostring(minTrackedForCompletion) ..
+                " | restartLimit=" ..
+                tostring(restartLimit)
+            )
+        end
+
+        return true
+    end
+
+    restartCount = restartCount + 1
+    self.state.waveUnknownRestartCounts[waveIndex] = restartCount
+
+    self.log(
+        "Wave collapsed into unknown NPCs before any confirmed defeat; restarting initialization | wave=" ..
+        tostring(waveIndex) ..
+        " | tracked=" ..
+        tostring(total) ..
+        " | unknown=" ..
+        tostring(unknown) ..
+        " | required=" ..
+        tostring(minTrackedForCompletion) ..
+        " | restart=" ..
+        tostring(restartCount) ..
+        "/" ..
+        tostring(restartLimit)
+    )
+
+    if self.treasure then self.treasure:clear() end
+    self.spawner:despawnAll()
+    self:queueWave(waveIndex)
+
+    return true
 end
 
 function MissionController:scheduleSpawnTracking(objects, meta)
@@ -166,6 +242,7 @@ function MissionController:queueWave(waveIndex)
 
     self.state.missionActive = true
     self.markers:clear()
+    self:clearPendingWaveMarker()
 
     self.log("Queueing " .. wave.name .. " | count=" .. tostring(wave.count))
 
@@ -234,11 +311,63 @@ function MissionController:forceWave(waveIndex)
 
     self.state.currentWaveIndex = 0
     self.state.currentMarkerWaveIndex = nil
+    self.state.pendingMarkerWaveIndex = nil
     self.state.waveCompletionHandled = false
+    if not self.state.waveUnknownRestartCounts then self.state.waveUnknownRestartCounts = {} end
+    self.state.waveUnknownRestartCounts[waveIndex] = 0
     self.state.lastCompletionWaitLogTime = nil
     self.state.lastCompletionBlockedLogTime = nil
 
     self:queueWave(waveIndex)
+end
+
+function MissionController:clearPendingWaveMarker()
+    self.state.pendingMarkerWaveIndex = nil
+    self.state.markerRegisterRetryTimer = 0
+end
+
+function MissionController:setWaveNavigationMarker(waveIndex, reason)
+    self.state.pendingMarkerWaveIndex = waveIndex
+    self.state.markerRegisterRetryTimer = self.settings.MARKER_REGISTER_RETRY_INTERVAL or 1.0
+
+    local ok = self.markers:setWaveMarker(waveIndex)
+
+    if ok then
+        self:clearPendingWaveMarker()
+        return true
+    end
+
+    self.log(
+        "Wave marker pending retry | wave=" ..
+        tostring(waveIndex) ..
+        " | reason=" ..
+        tostring(reason or "unknown")
+    )
+
+    return false
+end
+
+function MissionController:updatePendingWaveMarker(delta)
+    if not self.state.missionActive then return end
+    if self.state.currentWaveIndex > 0 then return end
+    if self.state.markerActive then return end
+
+    if not self.state.pendingMarkerWaveIndex and self.state.highestWaveStarted < #self.waves then
+        self.state.pendingMarkerWaveIndex = self.state.highestWaveStarted + 1
+        self.state.markerRegisterRetryTimer = 0
+        self.log("Recovering missing wave marker | wave=" .. tostring(self.state.pendingMarkerWaveIndex))
+    end
+
+    if not self.state.pendingMarkerWaveIndex then return end
+
+    self.state.markerRegisterRetryTimer = (self.state.markerRegisterRetryTimer or 0) - delta
+
+    if self.state.markerRegisterRetryTimer > 0 then return end
+
+    self.state.markerRegisterRetryTimer = self.settings.MARKER_REGISTER_RETRY_INTERVAL or 1.0
+
+    self.log("Retrying wave marker | wave=" .. tostring(self.state.pendingMarkerWaveIndex))
+    self:setWaveNavigationMarker(self.state.pendingMarkerWaveIndex, "retry")
 end
 
 function MissionController:updateWaveCompletion()
@@ -255,6 +384,11 @@ function MissionController:updateWaveCompletion()
     local wave = self.waves[self.state.currentWaveIndex]
     local minTrackedForCompletion = self:getWaveMinTrackedForCompletion(wave)
     local total, active, valid, defeated, unknown = self:countWaveNPCs(self.state.currentWaveIndex)
+    local effectiveDefeated = defeated + unknown
+
+    if self:handleUnknownWaveCollapse(self.state.currentWaveIndex, total, defeated, unknown, minTrackedForCompletion) then
+        return
+    end
 
     if total < minTrackedForCompletion or self.state.waveAliveSeen[self.state.currentWaveIndex] ~= true then
         if self.state.lastCompletionBlockedLogTime == nil or self.state.elapsed - self.state.lastCompletionBlockedLogTime >= 5.0 then
@@ -281,27 +415,6 @@ function MissionController:updateWaveCompletion()
         return
     end
 
-    if unknown > 0 then
-        if self.state.lastCompletionBlockedLogTime == nil or self.state.elapsed - self.state.lastCompletionBlockedLogTime >= 5.0 then
-            self.state.lastCompletionBlockedLogTime = self.state.elapsed
-
-            self.log(
-                "Wave completion blocked: tracked NPCs lost before confirmed defeat | wave=" ..
-                tostring(self.state.currentWaveIndex) ..
-                " | active=" ..
-                tostring(active) ..
-                " | valid=" ..
-                tostring(valid) ..
-                " | defeated=" ..
-                tostring(defeated) ..
-                " | unknown=" ..
-                tostring(unknown)
-            )
-        end
-
-        return
-    end
-
     if active > 0 then
         if self.state.lastCompletionWaitLogTime == nil or self.state.elapsed - self.state.lastCompletionWaitLogTime >= 5.0 then
             self.state.lastCompletionWaitLogTime = self.state.elapsed
@@ -318,14 +431,29 @@ function MissionController:updateWaveCompletion()
                 " | defeated=" ..
                 tostring(defeated) ..
                 " | unknown=" ..
-                tostring(unknown)
+                tostring(unknown) ..
+                " | effectiveDefeated=" ..
+                tostring(effectiveDefeated)
             )
         end
 
         return
     end
 
-    if defeated < minTrackedForCompletion then
+    if unknown > 0 then
+        self.log(
+            "Wave completion treating unknown NPCs as defeated | wave=" ..
+            tostring(self.state.currentWaveIndex) ..
+            " | defeated=" ..
+            tostring(defeated) ..
+            " | unknown=" ..
+            tostring(unknown) ..
+            " | effectiveDefeated=" ..
+            tostring(effectiveDefeated)
+        )
+    end
+
+    if effectiveDefeated < minTrackedForCompletion then
         if self.state.lastCompletionBlockedLogTime == nil or self.state.elapsed - self.state.lastCompletionBlockedLogTime >= 5.0 then
             self.state.lastCompletionBlockedLogTime = self.state.elapsed
 
@@ -334,6 +462,10 @@ function MissionController:updateWaveCompletion()
                 tostring(self.state.currentWaveIndex) ..
                 " | defeated=" ..
                 tostring(defeated) ..
+                " | unknown=" ..
+                tostring(unknown) ..
+                " | effectiveDefeated=" ..
+                tostring(effectiveDefeated) ..
                 " | required=" ..
                 tostring(minTrackedForCompletion)
             )
@@ -350,7 +482,11 @@ function MissionController:updateWaveCompletion()
         "Wave completed | wave=" ..
         tostring(completedWaveIndex) ..
         " | trackedInWave=" ..
-        tostring(total)
+        tostring(total) ..
+        " | defeated=" ..
+        tostring(defeated) ..
+        " | unknownAsDefeated=" ..
+        tostring(unknown)
     )
 
     if self.treasure then
@@ -360,7 +496,7 @@ function MissionController:updateWaveCompletion()
     if completedWaveIndex < #self.waves then
         local nextWave = completedWaveIndex + 1
         self.state.currentWaveIndex = 0
-        self.markers:setWaveMarker(nextWave)
+        self:setWaveNavigationMarker(nextWave, "wave-completed")
         self.hud:show("Wave cleared. Go to the next location.")
     else
         self.state.currentWaveIndex = 0
@@ -384,7 +520,7 @@ function MissionController:startMission()
     self.state.markerActive = false
     self.state.lastHUDText = ""
 
-    self.markers:setWaveMarker(1)
+    self:setWaveNavigationMarker(1, "mission-start")
 
     self.log("Mission started. Go to marker.")
 end
@@ -397,6 +533,7 @@ function MissionController:stopMission()
     self.state.currentWaveIndex = 0
     self.state.highestWaveStarted = 0
     self.state.currentMarkerWaveIndex = nil
+    self.state.pendingMarkerWaveIndex = nil
     self.state.waveCompletionHandled = false
     self.state.lastWaveStartTime = nil
     self.state.lastCompletionWaitLogTime = nil
@@ -436,6 +573,7 @@ function MissionController:checkMission()
             )
 
             self.markers:clear()
+            self:clearPendingWaveMarker()
             self:queueWave(waveToStart)
         end
     end
@@ -448,6 +586,9 @@ function MissionController:debugState()
     self.log("currentWaveIndex=" .. tostring(self.state.currentWaveIndex))
     self.log("highestWaveStarted=" .. tostring(self.state.highestWaveStarted))
     self.log("currentMarkerWaveIndex=" .. tostring(self.state.currentMarkerWaveIndex))
+    self.log("pendingMarkerWaveIndex=" .. tostring(self.state.pendingMarkerWaveIndex))
+    self.log("activeRouteCarrierMappin=" .. tostring(self.state.activeRouteCarrierMappin))
+    self.log("markerRegisterRetryTimer=" .. tostring(self.state.markerRegisterRetryTimer))
     self.log("waveCompletionHandled=" .. tostring(self.state.waveCompletionHandled))
     self.log("totalWaves=" .. tostring(#self.waves))
     self.log("spawnQueue=" .. tostring(#self.state.spawnQueue))
@@ -465,6 +606,7 @@ function MissionController:debugState()
     self.log("lastCompletionWaitLogTime=" .. tostring(self.state.lastCompletionWaitLogTime))
     self.log("lastCompletionBlockedLogTime=" .. tostring(self.state.lastCompletionBlockedLogTime))
     self.log("currentWaveAliveSeen=" .. tostring(self.state.waveAliveSeen[self.state.currentWaveIndex] == true))
+    self.log("currentWaveUnknownRestarts=" .. tostring(self.state.waveUnknownRestartCounts and self.state.waveUnknownRestartCounts[self.state.currentWaveIndex] or 0))
     self.log("waveCompletionTimer=" .. tostring(self.state.waveCompletionTimer))
     self.log("chasePlayerTimer=" .. tostring(self.state.chasePlayerTimer))
     self.log("lastHUDText=" .. tostring(self.state.lastHUDText))
@@ -618,6 +760,8 @@ function MissionController:onUpdate(delta)
     self.state.waveCompletionTimer = self.state.waveCompletionTimer - delta
 
     self:checkMission()
+    self:updatePendingWaveMarker(delta)
+    self.markers:update(delta)
     self.hud:updateCountdown(false)
     self.hud:updatePending()
     self:updatePendingSpawnTracks()

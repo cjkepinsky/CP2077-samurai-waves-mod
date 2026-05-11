@@ -13,14 +13,18 @@ function State:resetMission()
     self.missionActive = false
     self.markerActive = false
     self.activeMappin = nil
+    self.activeMappinPos = nil
+    self.activeRouteCarrierMappin = nil
     self.activeTreasureMappin = nil
     self.activeTreasure = nil
     self.claimedTreasures = {}
     self.waveAliveSeen = {}
     self.waveDefeatedObjects = {}
+    self.waveUnknownRestartCounts = {}
     self.currentWaveIndex = 0
     self.highestWaveStarted = 0
     self.currentMarkerWaveIndex = nil
+    self.pendingMarkerWaveIndex = nil
     self.waveCompletionHandled = false
     self.lastWaveStartTime = nil
     self.lastCompletionWaitLogTime = nil
@@ -49,6 +53,8 @@ function State:resetTimers()
     self.hudCountdownTimer = 0
     self.spawnTimeoutTimer = 0
     self.waveCompletionTimer = 0
+    self.markerRouteRefreshTimer = 0
+    self.markerRegisterRetryTimer = 0
 end
 
 function State:clearSpawnRuntime()

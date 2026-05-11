@@ -627,7 +627,7 @@ function Spawner:requeueSameSpawn(meta, reason)
         return false
     end
 
-    table.insert(self.state.spawnQueue, 1, {
+    table.insert(self.state.spawnQueue, {
         npc = meta.npc,
         wave = wave,
         waveIndex = meta.waveIndex,
@@ -672,7 +672,7 @@ function Spawner:requeueFallbackSpawn(meta, reason)
         return false
     end
 
-    table.insert(self.state.spawnQueue, 1, {
+    table.insert(self.state.spawnQueue, {
         npc = wave.fallbackNpc,
         wave = wave,
         waveIndex = meta.waveIndex,

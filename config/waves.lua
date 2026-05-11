@@ -104,6 +104,10 @@ return function(CharacterTDBID)
             edgeB = { x = 143.67856, y = 1061.0533, z = 203, w = 1 }
         },
 
+        baseballsMarker = {
+            x = 145.41028, y = 1056.0579, z = 203, w = 1
+        },
+
         baseballsExtraPoint = {
             x = 126.34494, y = 1102.2173, z = 203.0058, w = 1
         },
@@ -197,7 +201,7 @@ return function(CharacterTDBID)
         "BaseStatusEffect.IgnoreWeaponSafe"
     }
     local stableHumanNavmeshCheckRadius = 1.0
-    local skipEmptySpawnRetries = true
+    local skipEmptySpawnRetries = false
 
     local waves = {
         {
@@ -213,7 +217,7 @@ return function(CharacterTDBID)
             spawnLineRows = 2,
             spawnLineRowSpacing = 1.1,
             humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
-            humanNavmeshRequired = true,
+            humanNavmeshRequired = false,
             skipEmptySpawnRetries = skipEmptySpawnRetries,
             treasure = { rewardMoney = 10000 },
             disableDirectChase = true,
@@ -236,6 +240,7 @@ return function(CharacterTDBID)
             club = "BASEBALLS CLUB",
             count = 20,
             npcs = npcs.baseballs,
+            markerPos = locations.baseballsMarker,
             spawnLine = locations.baseballsLine,
             extraSpawnPoint = locations.baseballsExtraPoint,
             extraSpawnFromIndex = 6,

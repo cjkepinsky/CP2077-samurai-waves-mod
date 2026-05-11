@@ -244,7 +244,7 @@ function Markers:createRouteMappinData(style)
         self:setMappinType(mappinData, style.mappinType, false)
         local variantName = self:setMappinVariant(mappinData, style.variants)
 
-        pcall(function() mappinData.debugCaption = "Run V, run!" end)
+        pcall(function() mappinData.debugCaption = "Waves" end)
 
         return mappinData, variantName
     end
@@ -254,7 +254,7 @@ function Markers:createRouteMappinData(style)
     mappinData.visibleThroughWalls = true
     self:setMappinType(mappinData, style.mappinType, true)
     local variantName = self:setMappinVariant(mappinData, style.variants)
-    pcall(function() mappinData.debugCaption = "Run V, run!" end)
+    pcall(function() mappinData.debugCaption = "Waves" end)
 
     return mappinData, variantName
 end

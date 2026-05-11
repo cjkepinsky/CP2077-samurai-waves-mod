@@ -66,7 +66,7 @@ function Helper.makeLogger(modName)
         print(line)
 
         pcall(function()
-            local file = io.open(MOD_DIR .. "StaticShooters.log", "a")
+            local file = io.open(MOD_DIR .. "Waves.log", "a")
 
             if file then
                 file:write(line .. "\n")

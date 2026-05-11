@@ -502,7 +502,7 @@ function MissionController:updateWaveCompletion()
         self.state.currentWaveIndex = 0
         self.state.missionActive = false
         self.markers:clear()
-        self.hud:show("Run V, run! completed.")
+        self.hud:show("Waves completed.")
         self.log("Mission completed")
     end
 end
@@ -658,50 +658,50 @@ function MissionController:debugState()
 end
 
 function MissionController:registerHotkeys()
-    registerHotkey("RunVRunStartMission", "Run V, run! - start mission", function()
+    registerHotkey("WavesStartMission", "Waves - start mission", function()
         self:startMission()
     end)
 
-    registerHotkey("RunVRunStopMission", "Run V, run! - stop mission", function()
+    registerHotkey("WavesStopMission", "Waves - stop mission", function()
         self:stopMission()
     end)
 
-    registerHotkey("RunVRunTestMarkerOnPlayer", "Run V, run! - test marker on player", function()
+    registerHotkey("WavesTestMarkerOnPlayer", "Waves - test marker on player", function()
         self.markers:testMarkerOnPlayer()
     end)
 
-    registerHotkey("RunVRunDebugState", "Run V, run! - debug state", function()
+    registerHotkey("WavesDebugState", "Waves - debug state", function()
         self:debugState()
     end)
 
     for waveIndex = 1, #self.waves do
         local index = waveIndex
 
-        registerHotkey("RunVRunForceWave" .. tostring(index), "Run V, run! - force Wave " .. tostring(index), function()
+        registerHotkey("WavesForceWave" .. tostring(index), "Waves - force Wave " .. tostring(index), function()
             self:forceWave(index)
         end)
     end
 
-    registerHotkey("RunVRunForceAggro", "Run V, run! - force aggro all", function()
+    registerHotkey("WavesForceAggro", "Waves - force aggro all", function()
         self.log("Manual force aggro all")
         self.ai:forceAggroAll()
     end)
 
-    registerHotkey("RunVRunChasePlayer", "Run V, run! - chase player all", function()
+    registerHotkey("WavesChasePlayer", "Waves - chase player all", function()
         self.log("Manual chase player all")
         self.ai:forceAggroAll()
     end)
 
-    registerHotkey("RunVRunDespawnAll", "Run V, run! - despawn all NPCs", function()
+    registerHotkey("WavesDespawnAll", "Waves - despawn all NPCs", function()
         self.spawner:despawnAll()
     end)
 
-    registerHotkey("RunVRunKillAll", "Run V, run! - kill all spawned NPCs", function()
+    registerHotkey("WavesKillAll", "Waves - kill all spawned NPCs", function()
         local attempted, affected = self.ai:killAllSpawned()
         self.hud:show("Kill all spawned NPCs: " .. tostring(affected) .. "/" .. tostring(attempted))
     end)
 
-    registerHotkey("RunVRunShowHUD", "Run V, run! - show HUD countdown", function()
+    registerHotkey("WavesShowHUD", "Waves - show HUD countdown", function()
         self.log("Manual show HUD countdown")
         self.hud:updateCountdown(true)
     end)

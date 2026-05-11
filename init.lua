@@ -1,4 +1,4 @@
-local MOD_NAME = "Run V, run!"
+local MOD_NAME = "Waves"
 print("[" .. MOD_NAME .. "] file loaded")
 
 

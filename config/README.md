@@ -1,4 +1,4 @@
-# StaticShooters Config
+# Waves Config
 
 `settings.lua` contains global tuning values: timers, chase/search behavior, spawn retry limits, and default safe spawn distances.
 
@@ -47,4 +47,4 @@ Runtime code lives in `../src/`:
 - `hud.lua`: player-facing messages.
 - `state.lua`: mutable mission/runtime state.
 
-Useful debug hotkeys include `RunVRunForceWaveX`, `RunVRunForceAggro`, `RunVRunDespawnAll`, and `RunVRunKillAll`.
+Useful debug hotkeys include `WavesForceWaveX`, `WavesForceAggro`, `WavesDespawnAll`, and `WavesKillAll`.

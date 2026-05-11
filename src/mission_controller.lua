@@ -10,6 +10,8 @@ end
 
 function MissionController.new(deps)
     return setmetatable({
+        modName = deps.modName or "Waves",
+        modVersion = deps.modVersion or "unknown",
         state = deps.state,
         settings = deps.settings,
         waves = deps.waves,
@@ -508,7 +510,7 @@ function MissionController:updateWaveCompletion()
 end
 
 function MissionController:startMission()
-    self.log("Starting mission")
+    self.log("Starting mission | version=" .. tostring(self.modVersion))
 
     self.spawner:despawnAll()
     self.markers:clear()
@@ -581,6 +583,8 @@ end
 
 function MissionController:debugState()
     self.log("=== DEBUG STATE ===")
+    self.log("modName=" .. tostring(self.modName))
+    self.log("modVersion=" .. tostring(self.modVersion))
     self.log("missionActive=" .. tostring(self.state.missionActive))
     self.log("markerActive=" .. tostring(self.state.markerActive))
     self.log("currentWaveIndex=" .. tostring(self.state.currentWaveIndex))
@@ -708,7 +712,7 @@ function MissionController:registerHotkeys()
 end
 
 function MissionController:onInit()
-    self.log("Loaded")
+    self.log("Loaded | version=" .. tostring(self.modVersion))
 
     ObserveAfter("PreventionSpawnSystem", "SpawnRequestFinished", function(_, result)
         self.log("SpawnRequestFinished observed AFTER")

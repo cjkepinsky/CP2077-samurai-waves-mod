@@ -1,5 +1,8 @@
 local MOD_NAME = "Waves"
-print("[" .. MOD_NAME .. "] file loaded")
+local MOD_VERSION = "0.9.0"
+local MOD_LOG_NAME = MOD_NAME .. " v" .. MOD_VERSION
+
+print("[" .. MOD_LOG_NAME .. "] file loaded")
 
 
 -- NOTKI
@@ -34,7 +37,7 @@ local function loadHelper()
 end
 
 local Helper = loadHelper()
-local log = Helper.makeLogger(MOD_NAME)
+local log = Helper.makeLogger(MOD_LOG_NAME)
 
 -- =========================================================
 -- Configuration
@@ -128,6 +131,8 @@ local spawner = Spawner.new({
 })
 
 local mission = MissionController.new({
+    modName = MOD_NAME,
+    modVersion = MOD_VERSION,
     state = state,
     settings = settings,
     waves = waves,

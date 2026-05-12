@@ -32,6 +32,7 @@ Useful wave fields:
 - `skipEmptySpawnRetries`: skips fallback/same-position retries when the spawn system accepts a request but returns no spawned objects.
 - `minTrackedForCompletion`: optional per-wave override for the minimum number of tracked NPCs required before the wave can complete and pay its stash reward. Otherwise the global completion threshold from `settings.lua` is used.
 - `treasure`: optional guarded stash config. Use `rewardMoney` for the eddies granted when the wave is cleared, and optional `pos` to place the stash marker somewhere other than the middle of the spawn line.
+- `playerWeaponRule`: optional player restriction for the wave. `type = "katanaOnly"` keeps only katana weapons equipped during the wave, grants/equips `katanaItem` as a fallback, and can restart the wave on a non-katana hit with `violationAction = "restartWave"`. Use `blockQuickhacks = true` to add `QuickHackImmunity` to tracked NPCs in that wave. Keep `requireKatanaHitForDefeat = true` when a tracked NPC should not count as defeated unless the mod saw a katana hit on it first.
 - `minSpawnDistance`, `enforceMinSpawnDistance`, `pushSpawnAway`: protect against spawning too close to the player.
 - `alwaysSearchPlayer`: makes non-combat search movement advance toward the player even outside the global search radius.
 - `searchAroundHomeOnly`: makes non-combat search movement investigate near the spawn/home area instead of using the player's exact position.
@@ -46,6 +47,7 @@ Runtime code lives in `../src/`:
 - `ai.lua`: hostile/search/chase behavior and defeated-state checks.
 - `markers.lua`: map marker and GPS route handling.
 - `treasure.lua`: guarded stash marker and wave-clear reward handling.
+- `player_rules.lua`: per-wave player weapon restrictions.
 - `hud.lua`: player-facing messages.
 - `state.lua`: mutable mission/runtime state.
 

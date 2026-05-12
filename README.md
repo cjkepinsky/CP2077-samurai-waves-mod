@@ -6,7 +6,7 @@ Waves is a Cyberpunk 2077 mod built on Cyber Engine Tweaks. It adds a sequence o
 
 The mod is built around authored wave locations. Each wave can define its own NPC records, spawn line or spawn points, marker position, search behavior, spawn retries, and reward.
 
-Current version: `0.9.2`. `Waves.log` includes the version in its log prefix, for example `[Waves v0.9.2]`, so bug reports can always be tied to a specific build.
+Current version: `0.9.5`. `Waves.log` includes the version in its log prefix, for example `[Waves v0.9.5]`, so bug reports can always be tied to a specific build.
 
 ### Requirements
 
@@ -44,6 +44,8 @@ The runtime log is written to `Waves.log` in the mod folder.
 
 Each wave has a reward configured in `config/waves.lua`. The reward is granted by script after the wave is cleared; it is not a physical loot container.
 
+Some waves can define `playerWeaponRule`. The built-in `katanaOnly` rule removes non-katana weapons from active weapon slots during that wave, equips a fallback katana if needed, and can restart the wave if the player damages a tracked NPC with anything other than a katana. With `blockQuickhacks = true`, tracked NPCs also receive quickhack immunity during the wave. With `requireKatanaHitForDefeat = true`, NPCs cannot count as defeated unless the mod saw a katana hit on them first.
+
 ### Hotkeys
 
 Bind these in the CET overlay:
@@ -71,6 +73,7 @@ Useful values:
 
 - `START_TRIGGER_DISTANCE`: distance from the marker at which a wave starts.
 - `MARKER_ROUTE_REFRESH_INTERVAL`: how often the mod asks the game to refresh the active route.
+- `PLAYER_WEAPON_RULE_INTERVAL`: how often a per-wave player weapon rule enforces equipped weapon slots.
 - `WAVE_UNKNOWN_RESTART_LIMIT`: how many times a wave can restart if all tracked NPCs disappear before any confirmed defeat.
 - `POST_SPAWN_TELEPORT_CORRECTION_ENABLED`: when `false`, disables post-spawn teleport corrections for all waves.
 - `humanNavmeshCheckRadius`: optional human navmesh lookup before spawning.
@@ -141,7 +144,7 @@ Waves to mod do Cyberpunk 2077 oparty o Cyber Engine Tweaks. Dodaje sekwencję f
 
 Mod jest zbudowany wokół ręcznie ustawianych fal. Każda fala może mieć własne rekordy NPC, linię albo punkty spawnu, pozycję markera, zachowanie szukania gracza, retry spawnu i nagrodę.
 
-Aktualna wersja: `0.9.2`. `Waves.log` zawiera wersję w prefixie logu, np. `[Waves v0.9.2]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
+Aktualna wersja: `0.9.5`. `Waves.log` zawiera wersję w prefixie logu, np. `[Waves v0.9.5]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
 
 ### Wymagania
 
@@ -179,6 +182,8 @@ Log działania moda zapisuje się w pliku `Waves.log` w folderze moda.
 
 Każda fala ma nagrodę skonfigurowaną w `config/waves.lua`. Nagroda jest wypłacana skryptem po wyczyszczeniu fali; to nie jest fizyczny kontener z lootem.
 
+Wybrane fale moga definiowac `playerWeaponRule`. Wbudowana regula `katanaOnly` usuwa bron niebedaca katana z aktywnych slotow broni podczas tej fali, wyposaza gracza w awaryjna katane gdy trzeba i moze zrestartowac fale, jezeli gracz zada sledzonemu NPC obrazenia czyms innym niz katana. Przy `blockQuickhacks = true` sledzeni NPC dostaja tez odpornosc na quickhacki na czas fali. Przy `requireKatanaHitForDefeat = true` NPC nie zaliczy sie jako pokonany, dopoki mod nie zobaczy na nim trafienia katana.
+
 ### Hotkeye
 
 Hotkeye przypisuje się w nakładce CET:
@@ -206,6 +211,7 @@ Przydatne ustawienia:
 
 - `START_TRIGGER_DISTANCE`: odległość od markera, przy której fala startuje.
 - `MARKER_ROUTE_REFRESH_INTERVAL`: jak często mod próbuje odświeżyć aktywną trasę.
+- `PLAYER_WEAPON_RULE_INTERVAL`: jak często reguła broni gracza wymusza aktywne sloty broni.
 - `WAVE_UNKNOWN_RESTART_LIMIT`: ile razy fala może się zrestartować, jeśli wszyscy śledzeni NPC znikną przed potwierdzonym pokonaniem kogokolwiek.
 - `POST_SPAWN_TELEPORT_CORRECTION_ENABLED`: jeśli jest `false`, wyłącza korekty teleportem po spawnie dla wszystkich fal.
 - `humanNavmeshCheckRadius`: opcjonalne sprawdzenie human navmesh przed spawnem.

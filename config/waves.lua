@@ -393,6 +393,17 @@ return function(CharacterTDBID)
             humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
             skipEmptySpawnRetries = skipEmptySpawnRetries,
             treasure = { rewardMoney = 30000 },
+            playerWeaponRule = {
+                type = "katanaOnly",
+                katanaItem = "Items.Preset_Katana_Wakako",
+                blockQuickhacks = true,
+                quickhackImmunityStat = "QuickHackImmunity",
+                requireKatanaHitForDefeat = true,
+                violationAction = "restartWave",
+                startMessage = "Katana only for this contract. Quickhacks are blocked.",
+                warningMessage = "Katana only for this contract. Quickhacks are blocked.",
+                violationMessage = "Katana only. Restarting wave."
+            },
             disableDirectChase = true,
             alwaysSearchPlayer = true,
             searchAroundHomeOnly = true,

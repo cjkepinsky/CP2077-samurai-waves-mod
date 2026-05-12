@@ -19,6 +19,7 @@ function MissionController.new(deps)
         planner = deps.planner,
         markers = deps.markers,
         treasure = deps.treasure,
+        playerRules = deps.playerRules,
         hud = deps.hud,
         ai = deps.ai,
         spawner = deps.spawner,
@@ -108,18 +109,39 @@ function MissionController:countWaveNPCs(waveIndex)
                 valid = valid + 1
 
                 if self.ai:isNPCConfirmedDefeated(npc) then
-                    defeatedObjects[npc] = true
-                    defeated = defeated + 1
+                    if self.playerRules and not self.playerRules:validateDefeat(npc, meta, "defeat-without-katana-hit") then
+                        active = active + 1
+                    else
+                        defeatedObjects[npc] = true
+                        defeated = defeated + 1
+                    end
                 else
                     active = active + 1
                 end
             else
+                if self.playerRules then
+                    self.playerRules:validateDefeat(npc, meta, "unknown-without-katana-hit")
+                end
                 unknown = unknown + 1
             end
         end
     end
 
     return total, active, valid, defeated, unknown
+end
+
+function MissionController:handlePlayerWeaponRuleViolation()
+    if not self.state.playerWeaponRuleViolation then return false end
+
+    local violation = self.state.playerWeaponRuleViolation
+
+    if violation.waveIndex == self.state.currentWaveIndex and violation.action == "restartWave" then
+        self:restartWave(violation.waveIndex, "player-weapon-rule")
+        return true
+    end
+
+    self.state.playerWeaponRuleViolation = nil
+    return false
 end
 
 function MissionController:handleUnknownWaveCollapse(waveIndex, total, defeated, unknown, minTrackedForCompletion)
@@ -174,8 +196,39 @@ function MissionController:handleUnknownWaveCollapse(waveIndex, total, defeated,
         tostring(restartLimit)
     )
 
+    if self.playerRules then self.playerRules:stopWave("unknown-collapse") end
     if self.treasure then self.treasure:clear() end
     self.spawner:despawnAll()
+    self:queueWave(waveIndex, {
+        keepNavigationMarker = self.state.activeMappin ~= nil and self.state.currentMarkerWaveIndex == waveIndex
+    })
+
+    return true
+end
+
+function MissionController:restartWave(waveIndex, reason)
+    if not waveIndex or waveIndex <= 0 then return false end
+
+    self.log(
+        "Restarting wave | wave=" ..
+        tostring(waveIndex) ..
+        " | reason=" ..
+        tostring(reason or "unknown")
+    )
+
+    if self.playerRules then
+        self.playerRules:stopWave("restart")
+    end
+
+    if self.treasure then self.treasure:clear() end
+    self.spawner:despawnAll()
+
+    self.state.currentWaveIndex = 0
+    self.state.waveCompletionHandled = false
+    self.state.playerWeaponRuleViolation = nil
+    self.state.lastCompletionWaitLogTime = nil
+    self.state.lastCompletionBlockedLogTime = nil
+
     self:queueWave(waveIndex, {
         keepNavigationMarker = self.state.activeMappin ~= nil and self.state.currentMarkerWaveIndex == waveIndex
     })
@@ -209,6 +262,10 @@ function MissionController:processSpawnTracking(objects, meta)
     for _, spawnedObject in ipairs(objects) do
         if self.spawner:trackSpawnedObject(spawnedObject, meta) then
             table.insert(trackedThisResult, spawnedObject)
+
+            if self.playerRules then
+                self.playerRules:onNPCTracked(spawnedObject, meta)
+            end
 
             if meta and meta.waveIndex and not self.ai:isNPCConfirmedDefeated(spawnedObject) then
                 self.state.waveAliveSeen[meta.waveIndex] = true
@@ -282,6 +339,10 @@ function MissionController:queueWave(waveIndex, options)
     self.hud:showWaveStart(waveIndex, wave)
     self.log(wave.name .. " started.")
 
+    if self.playerRules then
+        self.playerRules:startWave(waveIndex, wave)
+    end
+
     local firstQueuedPos = nil
 
     for i = 1, wave.count do
@@ -328,6 +389,7 @@ function MissionController:forceWave(waveIndex)
     self.log("Manual force wave requested | wave=" .. tostring(waveIndex))
 
     self.markers:clear()
+    if self.playerRules then self.playerRules:stopWave("force-wave") end
     if self.treasure then self.treasure:clear() end
     self.spawner:despawnAll()
 
@@ -407,6 +469,10 @@ function MissionController:updateWaveCompletion()
     local minTrackedForCompletion = self:getWaveMinTrackedForCompletion(wave)
     local total, active, valid, defeated, unknown = self:countWaveNPCs(self.state.currentWaveIndex)
     local effectiveDefeated = defeated + unknown
+
+    if self:handlePlayerWeaponRuleViolation() then
+        return
+    end
 
     if self:handleUnknownWaveCollapse(self.state.currentWaveIndex, total, defeated, unknown, minTrackedForCompletion) then
         return
@@ -515,6 +581,10 @@ function MissionController:updateWaveCompletion()
         self.treasure:claimWave(completedWaveIndex)
     end
 
+    if self.playerRules then
+        self.playerRules:stopWave("completed")
+    end
+
     if completedWaveIndex < #self.waves then
         local nextWave = completedWaveIndex + 1
         self.state.currentWaveIndex = 0
@@ -533,6 +603,7 @@ function MissionController:startMission()
     self.log("Starting mission | version=" .. tostring(self.modVersion))
 
     self.spawner:despawnAll()
+    if self.playerRules then self.playerRules:stopWave("mission-start") end
     self.markers:clear()
     if self.treasure then self.treasure:clear() end
 
@@ -562,6 +633,7 @@ function MissionController:stopMission()
     self.state.lastCompletionBlockedLogTime = nil
 
     self.markers:clear()
+    if self.playerRules then self.playerRules:stopWave("mission-stop") end
     if self.treasure then self.treasure:clear() end
     self.spawner:despawnAll()
 
@@ -635,6 +707,8 @@ function MissionController:debugState()
     self.log("waveCompletionTimer=" .. tostring(self.state.waveCompletionTimer))
     self.log("chasePlayerTimer=" .. tostring(self.state.chasePlayerTimer))
     self.log("lastHUDText=" .. tostring(self.state.lastHUDText))
+    self.log("playerWeaponRuleActive=" .. tostring(self.playerRules and self.playerRules:isRuleActive() or false))
+    self.log("playerWeaponRuleViolation=" .. tostring(self.state.playerWeaponRuleViolation ~= nil))
 
     if self.state.currentWaveIndex > 0 then
         local total, active, valid, defeated, unknown = self:countWaveNPCs(self.state.currentWaveIndex)
@@ -735,6 +809,12 @@ end
 function MissionController:onInit()
     self.log("Loaded | version=" .. tostring(self.modVersion))
 
+    if self.playerRules then
+        ObserveAfter("NPCPuppet", "OnHit", function(npc, evt)
+            self.playerRules:onNPCPuppetHit(npc, evt)
+        end)
+    end
+
     ObserveAfter("PreventionSpawnSystem", "SpawnRequestFinished", function(_, result)
         self.log("SpawnRequestFinished observed AFTER")
 
@@ -791,6 +871,9 @@ function MissionController:onUpdate(delta)
     self.hud:updatePending()
     self:updatePendingSpawnTracks()
     self.spawner:updateTeleportCorrections()
+    if self.playerRules then
+        self.playerRules:update(delta)
+    end
     self.ai:updateDelayedAwareness()
     self.spawner:checkSpawnTimeouts()
 
@@ -827,6 +910,8 @@ function MissionController:onUpdate(delta)
         self.state.chasePlayerTimer = 0
         self.ai:updateEncounterNPCs(true)
     end
+
+    if self:handlePlayerWeaponRuleViolation() then return end
 
     self:updateWaveCompletion()
 end

@@ -1,5 +1,5 @@
 local MOD_NAME = "Waves"
-local MOD_VERSION = "0.9.2"
+local MOD_VERSION = "0.9.5"
 local MOD_LOG_NAME = MOD_NAME .. " v" .. MOD_VERSION
 
 print("[" .. MOD_LOG_NAME .. "] file loaded")
@@ -75,6 +75,7 @@ local HUD = Helper.loadModFile("src/hud.lua")
 local SpawnPlanner = Helper.loadModFile("src/spawn_planner.lua")
 local MarkerManager = Helper.loadModFile("src/markers.lua")
 local Treasure = Helper.loadModFile("src/treasure.lua")
+local PlayerRules = Helper.loadModFile("src/player_rules.lua")
 local AIManager = Helper.loadModFile("src/ai.lua")
 local Spawner = Helper.loadModFile("src/spawner.lua")
 local MissionController = Helper.loadModFile("src/mission_controller.lua")
@@ -111,6 +112,14 @@ local treasure = Treasure.new({
     log = log
 })
 
+local playerRules = PlayerRules.new({
+    state = state,
+    settings = settings,
+    waves = waves,
+    hud = hud,
+    log = log
+})
+
 local ai = AIManager.new({
     state = state,
     settings = settings,
@@ -140,6 +149,7 @@ local mission = MissionController.new({
     planner = planner,
     markers = markers,
     treasure = treasure,
+    playerRules = playerRules,
     hud = hud,
     ai = ai,
     spawner = spawner,

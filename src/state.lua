@@ -30,6 +30,7 @@ function State:resetMission()
     self.lastWaveStartTime = nil
     self.lastCompletionWaitLogTime = nil
     self.lastCompletionBlockedLogTime = nil
+    self.playerWeaponRuleViolation = nil
 end
 
 function State:resetRuntime()

@@ -534,9 +534,21 @@ function Spawner:teleportEntityToPos(entity, pos)
     return ok2 == true
 end
 
+function Spawner:isPostSpawnTeleportCorrectionEnabled(meta)
+    if self.settings.POST_SPAWN_TELEPORT_CORRECTION_ENABLED == false then
+        return false
+    end
+
+    if meta and meta.disablePostSpawnCorrection then
+        return false
+    end
+
+    return true
+end
+
 function Spawner:scheduleTeleportCorrections(npc, meta)
     if not npc or not meta or not meta.pos then return end
-    if meta.disablePostSpawnCorrection then return end
+    if not self:isPostSpawnTeleportCorrectionEnabled(meta) then return end
 
     if not self.state.pendingTeleportCorrections then
         self.state.pendingTeleportCorrections = {}
@@ -563,6 +575,11 @@ end
 function Spawner:updateTeleportCorrections()
     local pending = self.state.pendingTeleportCorrections
     if not pending then return end
+
+    if self.settings.POST_SPAWN_TELEPORT_CORRECTION_ENABLED == false then
+        self.state.pendingTeleportCorrections = {}
+        return
+    end
 
     local tolerance =
         self.settings.TELEPORT_CORRECTION_TOLERANCE or
@@ -705,7 +722,7 @@ function Spawner:trackSpawnedObject(obj, meta)
 
     local expectedPos = meta and meta.pos or nil
 
-    if expectedPos and meta and meta.disablePostSpawnCorrection then
+    if expectedPos and not self:isPostSpawnTeleportCorrectionEnabled(meta) then
         local playerDist = self.ai:getDistanceFromPlayer(obj)
         local expectedDistance = self:getObjectDistanceFromPosition(obj, expectedPos)
         local playerDistText = playerDist and tostring(math.floor(playerDist)) or "unknown"
@@ -716,6 +733,10 @@ function Spawner:trackSpawnedObject(obj, meta)
             tostring(meta.waveName) ..
             " | index=" ..
             tostring(meta.spawnIndex) ..
+            " | globalEnabled=" ..
+            tostring(self.settings.POST_SPAWN_TELEPORT_CORRECTION_ENABLED ~= false) ..
+            " | waveDisabled=" ..
+            tostring(meta and meta.disablePostSpawnCorrection == true) ..
             " | distFromPlayer=" ..
             playerDistText ..
             " | expectedDist=" ..

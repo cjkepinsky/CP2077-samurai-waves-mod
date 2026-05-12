@@ -4,6 +4,8 @@
 
 The search settings split NPC behavior into three ranges: slow investigation toward the player area, forced combat when the player is close, and full chase after combat starts.
 
+Set `POST_SPAWN_TELEPORT_CORRECTION_ENABLED = false` to disable all post-spawn teleport corrections while testing authored spawn locations. This does not disable despawn cleanup.
+
 `waves.lua` contains gameplay data only:
 
 - `npcs`: reusable NPC record groups.

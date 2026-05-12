@@ -21,6 +21,7 @@ function State:resetMission()
     self.claimedTreasures = {}
     self.waveAliveSeen = {}
     self.waveDefeatedObjects = {}
+    self.waveDespawnedDefeatedObjects = {}
     self.waveUnknownRestartCounts = {}
     self.currentWaveIndex = 0
     self.highestWaveStarted = 0
@@ -31,6 +32,7 @@ function State:resetMission()
     self.lastCompletionWaitLogTime = nil
     self.lastCompletionBlockedLogTime = nil
     self.playerWeaponRuleViolation = nil
+    self.invitationFactPollTimer = 0
 end
 
 function State:resetRuntime()
@@ -39,6 +41,7 @@ function State:resetRuntime()
     self.pendingSpawnTracks = {}
     self.pendingHUDMessages = {}
     self.delayedCombatActions = {}
+    self.pendingDefeatChecks = {}
     self.pendingTeleportCorrections = {}
     self.spawnedObjects = {}
     self.spawnedObjectHashes = {}
@@ -65,6 +68,7 @@ function State:clearSpawnRuntime()
     self.pendingSpawnTracks = {}
     self.pendingHUDMessages = {}
     self.delayedCombatActions = {}
+    self.pendingDefeatChecks = {}
     self.pendingTeleportCorrections = {}
     self.spawnQueue = {}
     self.spawnedObjects = {}

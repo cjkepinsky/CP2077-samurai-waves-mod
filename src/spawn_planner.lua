@@ -87,7 +87,7 @@ function SpawnPlanner:getConfiguredSpawnPoint(wave, spawnIndex)
         local index = spawnIndex
 
         if index > #candidates then
-            index = #candidates
+            index = ((index - 1) % #candidates) + 1
         end
 
         return candidates[index]

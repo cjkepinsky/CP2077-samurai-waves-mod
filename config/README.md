@@ -6,14 +6,16 @@ The search settings split NPC behavior into three ranges: slow investigation tow
 
 Set `POST_SPAWN_TELEPORT_CORRECTION_ENABLED = false` to disable all post-spawn teleport corrections while testing authored spawn locations. This does not disable despawn cleanup.
 
+Invitation settings live in `settings.lua`. Native SMS, shard, or quest content should set `INVITATION_ACCEPTED_FACT` to `1`; the CET runtime polls that fact with `INVITATION_FACT_POLL_INTERVAL` and starts the mission from wave 1.
+
 `waves.lua` contains gameplay data only:
 
-- `npcs`: reusable NPC record groups.
-- `spawnLines`: fallback spawn lines used by waves that do not define their own locations.
-- `locations`: named points, point lists, and line segments for specific waves.
-- `waves`: the ordered wave list. The next wave marker is created from each wave location.
+- `fallbackSpawnLines`: emergency spawn lines used only when a wave does not define its own location.
+- `waves`: the ordered wave list. Each wave keeps its own NPC records, marker position, spawn line or exact spawn points, reward, and behavior in one readable block.
 
-To add a wave, add any new NPC records to `npcs`, add a named location to `locations`, then append a new entry to `waves`.
+To add a wave, append a new entry to `waves`. Prefer inline `npcs = { C("...") }` and inline `spawnPoints` or `spawnLine` inside that wave, so the whole encounter can be edited in one place.
+
+Reusable option groups live near the top of `waves.lua` in `optionGroups`. A wave can apply them with `optionGroups = { "actLikeNinja" }`. Groups are applied before the wave's own fields, so direct wave settings can override preset defaults.
 
 Useful wave fields:
 
@@ -33,11 +35,31 @@ Useful wave fields:
 - `minTrackedForCompletion`: optional per-wave override for the minimum number of tracked NPCs required before the wave can complete and pay its stash reward. Otherwise the global completion threshold from `settings.lua` is used.
 - `treasure`: optional guarded stash config. Use `rewardMoney` for the eddies granted when the wave is cleared, and optional `pos` to place the stash marker somewhere other than the middle of the spawn line.
 - `playerWeaponRule`: optional player restriction for the wave. `type = "katanaOnly"` keeps only katana weapons equipped during the wave, grants/equips `katanaItem` as a fallback, and can restart the wave on a non-katana hit with `violationAction = "restartWave"`. Use `blockQuickhacks = true` to add `QuickHackImmunity` to tracked NPCs in that wave. Keep `requireKatanaHitForDefeat = true` when a tracked NPC should not count as defeated unless the mod saw a katana hit on it first.
+- `optionGroups`: optional reusable behavior presets. Current built-in group: `actLikeNinja`, used for quiet ambush NPCs that stay passive/held until the player comes very close.
 - `minSpawnDistance`, `enforceMinSpawnDistance`, `pushSpawnAway`: protect against spawning too close to the player.
 - `alwaysSearchPlayer`: makes non-combat search movement advance toward the player even outside the global search radius.
 - `searchAroundHomeOnly`: makes non-combat search movement investigate near the spawn/home area instead of using the player's exact position.
 - `searchMovementType`, `searchStepDistance`, `searchRadius`, `searchLeashDistance`, `searchStopDistance`, `searchAlwaysUseStealth`, `searchAlertStatusEffects`: tune local alert-search movement and visual alert state. Use `Strafe` for tactical weapon-ready searching; keep `searchAlwaysUseStealth` off unless you want crouch/kneel-style movement.
 - `forceMeleeAttack`: tells the runtime to use melee attack commands once combat starts.
+- `holdUntilPlayerDistance`: keeps spawned NPCs passive and suppresses mod-driven awareness/search/combat commands until the player is within this distance.
+- `passiveUntilPlayerDistance`, `passiveUntilPlayerAttitude`: keeps held NPCs neutral or friendly to the player before release, so they do not join combat when another NPC in the same wave wakes up.
+- `holdPositionUntilPlayerDistance`, `holdPositionTolerance`, `holdPositionRefreshInterval`, `holdPositionMovementType`, `holdPositionStopDistance`: optional leash for held NPCs. If native AI starts moving them before release, the runtime reissues a quiet move-home command.
+- `silentUntilPlayerDistance`: when used with `holdUntilPlayerDistance`, suppresses the mod's bark-prone early prime/awareness refreshes before release.
+- `readyUntilPlayerDistance`: keeps held NPCs quietly ready before release. By default this sets hostile attitude, switches to the primary weapon, and optionally looks at the player without applying the normal aggressive reaction preset.
+- `quietReadyMode`: optional quiet-ready strategy. Use `"weaponOnly"` to only switch to the primary weapon and apply quiet-ready status effects before release, avoiding hostile attitude and look-at commands that can trigger barks.
+- `lookAtPlayerUntilPlayerDistance`, `quietReadyRefreshInterval`, `quietReadyStatusEffects`, `wakeQuietReady`: optional tuning for quiet-ready ambush behavior.
+- `suppressCombatBarks`: makes hold-release combat avoid the reaction/stim calls most likely to trigger NPC chatter while still setting combat target and melee attack.
+- `quietWakeSuppressCombatThreat`, `quietWakeSuppressCombatPreset`: optional stronger bark suppression for hold-release combat.
+- `forceMeleeAttackOnWake`: sends one forced combat + melee attack burst when a held NPC is released by player proximity.
+- `despawnDefeatedNPCs`: removes defeated NPCs as soon as the runtime confirms their defeat. The runtime checks both the normal wave-completion loop and `NPCPuppet.OnHit`, then repeats a few short post-hit checks in case the engine marks the NPC defeated one frame later. Useful for stealth/ambush waves where remaining NPCs should not react to bodies. This is CET-side instant cleanup, not a native redscript hook that disables the game's body-recognition stimulus itself.
+- `autoCombatDistance`, `combatJoinDistance`, `directChaseDistance`: optional per-wave overrides for combat/chase thresholds.
+- `disableAIMovement`: prevents the mod from issuing regular movement/search/chase commands for that wave. Native combat behavior can still move the NPC after combat starts.
+
+When `spawnPoints` is present, `waves.lua` prepares the wave before returning it:
+
+- If `count` is omitted, it defaults to the number of spawn points.
+- If `markerPos` is omitted, it defaults to the first spawn point.
+- If `count` is higher than the number of spawn points, the runtime reuses points in order instead of stacking every extra NPC on the last point.
 
 Runtime code lives in `../src/`:
 

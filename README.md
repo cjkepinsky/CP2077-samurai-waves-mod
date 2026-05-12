@@ -6,13 +6,13 @@ Waves is a Cyberpunk 2077 mod built on Cyber Engine Tweaks. It adds a sequence o
 
 The mod is built around authored wave locations. Each wave can define its own NPC records, spawn line or spawn points, marker position, search behavior, spawn retries, and reward.
 
-Current version: `0.9.5`. `Waves.log` includes the version in its log prefix, for example `[Waves v0.9.5]`, so bug reports can always be tied to a specific build.
+Current version: `0.9.14`. `Waves.log` includes the version in its log prefix, for example `[Waves v0.9.14]`, so bug reports can always be tied to a specific build.
 
 ### Requirements
 
 - Cyberpunk 2077 on PC.
 - Cyber Engine Tweaks installed and working.
-- CET hotkeys enabled and bound in the CET overlay.
+- CET hotkeys are optional and only needed for debugging/testing shortcuts.
 - A save where the target areas are accessible.
 
 The mod does not require Redscript, ArchiveXL, TweakXL, or Native Settings UI.
@@ -28,19 +28,21 @@ Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/Waves
 
 3. Make sure `init.lua`, `helper.lua`, `config/`, and `src/` are directly inside the mod folder.
 4. Start or restart the game. If the game is already running, use CET's reload mods option.
-5. Open the CET overlay and bind at least `Waves - start mission`.
+5. Start or accept the invitation through the companion SMS/shard content, or use `Waves - start mission` as a debug shortcut.
 
 The runtime log is written to `Waves.log` in the mod folder.
 
 ### How To Use
 
-1. Press the hotkey bound to `Waves - start mission`.
+1. Accept the invitation through the companion native content. The CET runtime watches the configured invitation fact and starts the contract from wave 1 when it becomes active.
 2. The mod places a wave marker on the map and asks the game for a GPS route.
 3. Go to the marked location. By default, the wave starts when the player is within `150m` of the marker.
 4. Defeat the enemies.
 5. The GPS marker stays active while the wave is running, so it is easier to keep orientation around the enemy location.
 6. After the wave is cleared, the stash reward is paid and the next wave marker replaces the old one.
 7. Repeat until all waves are cleared.
+
+The invitation bridge is fact-based: native SMS, shard, or quest content should set `waves_invitation_accepted` to `1`. The CET runtime detects it, resets it, and starts the mission. `Waves - start mission` remains as a debug shortcut only.
 
 Each wave has a reward configured in `config/waves.lua`. The reward is granted by script after the wave is cleared; it is not a physical loot container.
 
@@ -72,6 +74,8 @@ Main configuration files:
 Useful values:
 
 - `START_TRIGGER_DISTANCE`: distance from the marker at which a wave starts.
+- `INVITATION_ACCEPTED_FACT`: quest fact watched by the CET runtime. Set it to `1` from SMS/shard/quest content to start wave 1.
+- `INVITATION_FACT_POLL_INTERVAL`: how often the runtime checks the invitation fact.
 - `MARKER_ROUTE_REFRESH_INTERVAL`: how often the mod asks the game to refresh the active route.
 - `PLAYER_WEAPON_RULE_INTERVAL`: how often a per-wave player weapon rule enforces equipped weapon slots.
 - `WAVE_UNKNOWN_RESTART_LIMIT`: how many times a wave can restart if all tracked NPCs disappear before any confirmed defeat.
@@ -144,13 +148,13 @@ Waves to mod do Cyberpunk 2077 oparty o Cyber Engine Tweaks. Dodaje sekwencję f
 
 Mod jest zbudowany wokół ręcznie ustawianych fal. Każda fala może mieć własne rekordy NPC, linię albo punkty spawnu, pozycję markera, zachowanie szukania gracza, retry spawnu i nagrodę.
 
-Aktualna wersja: `0.9.5`. `Waves.log` zawiera wersję w prefixie logu, np. `[Waves v0.9.5]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
+Aktualna wersja: `0.9.14`. `Waves.log` zawiera wersję w prefixie logu, np. `[Waves v0.9.14]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
 
 ### Wymagania
 
 - Cyberpunk 2077 na PC.
 - Zainstalowany i działający Cyber Engine Tweaks.
-- Włączone i przypisane hotkeye w nakładce CET.
+- Hotkeye CET są opcjonalne i potrzebne tylko do debugowania/testowania.
 - Save, w którym docelowe obszary miasta są dostępne.
 
 Mod nie wymaga Redscript, ArchiveXL, TweakXL ani Native Settings UI.
@@ -166,19 +170,21 @@ Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/Waves
 
 3. Upewnij się, że bezpośrednio w folderze moda są pliki `init.lua`, `helper.lua` oraz katalogi `config/` i `src/`.
 4. Uruchom albo zrestartuj grę. Jeśli gra już działa, użyj opcji reload mods w CET.
-5. Otwórz nakładkę CET i przypisz przynajmniej hotkey `Waves - start mission`.
+5. Rozpocznij albo zaakceptuj zaproszenie przez natywną zawartość SMS/shard, albo użyj `Waves - start mission` jako skrótu debugowego.
 
 Log działania moda zapisuje się w pliku `Waves.log` w folderze moda.
 
 ### Jak Używać
 
-1. Naciśnij hotkey przypisany do `Waves - start mission`.
+1. Zaakceptuj zaproszenie przez natywną zawartość. Runtime CET obserwuje skonfigurowany quest fact i startuje kontrakt od fali 1, gdy fact zostanie aktywowany.
 2. Mod ustawi marker fali na mapie i poprosi grę o trasę GPS.
 3. Jedź albo idź do zaznaczonego miejsca. Domyślnie fala startuje, gdy gracz jest w promieniu `150m` od markera.
 4. Pokonaj przeciwników.
 5. Marker GPS zostaje aktywny podczas trwania fali, żeby łatwiej było orientować się wokół lokacji przeciwników.
 6. Po wyczyszczeniu fali mod wypłaca nagrodę ze skrytki, a marker kolejnej fali zastępuje stary marker.
 7. Powtarzaj aż do zakończenia wszystkich fal.
+
+Most zaproszenia działa przez quest fact: natywny SMS, shard albo quest powinien ustawić `waves_invitation_accepted` na `1`. Runtime CET wykryje to, zresetuje fact i wystartuje misję. `Waves - start mission` zostaje tylko jako skrót debugowy.
 
 Każda fala ma nagrodę skonfigurowaną w `config/waves.lua`. Nagroda jest wypłacana skryptem po wyczyszczeniu fali; to nie jest fizyczny kontener z lootem.
 
@@ -210,6 +216,8 @@ Główne pliki konfiguracyjne:
 Przydatne ustawienia:
 
 - `START_TRIGGER_DISTANCE`: odległość od markera, przy której fala startuje.
+- `INVITATION_ACCEPTED_FACT`: quest fact obserwowany przez runtime CET. Ustaw go na `1` z SMS-a/sharda/questu, żeby wystartować wave 1.
+- `INVITATION_FACT_POLL_INTERVAL`: jak często runtime sprawdza quest fact zaproszenia.
 - `MARKER_ROUTE_REFRESH_INTERVAL`: jak często mod próbuje odświeżyć aktywną trasę.
 - `PLAYER_WEAPON_RULE_INTERVAL`: jak często reguła broni gracza wymusza aktywne sloty broni.
 - `WAVE_UNKNOWN_RESTART_LIMIT`: ile razy fala może się zrestartować, jeśli wszyscy śledzeni NPC znikną przed potwierdzonym pokonaniem kogokolwiek.

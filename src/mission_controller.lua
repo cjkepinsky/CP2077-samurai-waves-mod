@@ -86,6 +86,111 @@ function MissionController:getWaveUnknownRestartLimit(wave)
     return 0
 end
 
+function MissionController:shouldDespawnDefeatedNPC(wave)
+    return wave and wave.despawnDefeatedNPCs == true
+end
+
+function MissionController:markNPCDefeated(npc, meta, waveIndex, defeatedObjects)
+    defeatedObjects[npc] = true
+
+    local wave = self.waves[waveIndex]
+    if not self:shouldDespawnDefeatedNPC(wave) then return end
+
+    if not self.state.waveDespawnedDefeatedObjects then self.state.waveDespawnedDefeatedObjects = {} end
+    if not self.state.waveDespawnedDefeatedObjects[waveIndex] then self.state.waveDespawnedDefeatedObjects[waveIndex] = {} end
+
+    local despawnedObjects = self.state.waveDespawnedDefeatedObjects[waveIndex]
+    if despawnedObjects[npc] then return end
+
+    despawnedObjects[npc] = true
+
+    self.log(
+        "Defeated NPC despawned to hide body | wave=" ..
+        tostring(waveIndex) ..
+        " | index=" ..
+        tostring(meta and meta.spawnIndex or "unknown") ..
+        " | waveName=" ..
+        tostring(wave and wave.name or "unknown")
+    )
+
+    self.spawner:despawnNPC(npc)
+end
+
+function MissionController:tryMarkNPCDefeated(npc, reason)
+    if not npc then return false end
+
+    local meta = self.state.spawnedObjectMetas[npc]
+    local waveIndex = meta and meta.waveIndex or nil
+    if not waveIndex then return false end
+
+    if not self.spawner:isDefined(npc) then return false end
+    if not self.ai:isNPCConfirmedDefeated(npc) then return false end
+
+    if not self.state.waveDefeatedObjects then self.state.waveDefeatedObjects = {} end
+    if not self.state.waveDefeatedObjects[waveIndex] then self.state.waveDefeatedObjects[waveIndex] = {} end
+
+    local defeatedObjects = self.state.waveDefeatedObjects[waveIndex]
+    if defeatedObjects[npc] then return true end
+
+    if self.playerRules and not self.playerRules:validateDefeat(npc, meta, reason or "defeat-detected") then
+        return false
+    end
+
+    self.log(
+        "Defeated NPC detected immediately | wave=" ..
+        tostring(waveIndex) ..
+        " | index=" ..
+        tostring(meta.spawnIndex or "unknown") ..
+        " | reason=" ..
+        tostring(reason or "unknown")
+    )
+
+    self:markNPCDefeated(npc, meta, waveIndex, defeatedObjects)
+    return true
+end
+
+function MissionController:schedulePostHitDefeatChecks(npc, reason)
+    if not npc then return false end
+
+    local meta = self.state.spawnedObjectMetas[npc]
+    local wave = meta and self.waves[meta.waveIndex] or nil
+
+    if not meta or not self:shouldDespawnDefeatedNPC(wave) then return false end
+
+    local now = self.state.elapsed or 0
+    if meta.lastPostHitDefeatCheckQueuedAt and now - meta.lastPostHitDefeatCheckQueuedAt < 0.2 then
+        return false
+    end
+
+    meta.lastPostHitDefeatCheckQueuedAt = now
+
+    if not self.state.pendingDefeatChecks then self.state.pendingDefeatChecks = {} end
+
+    local delays = { 0.05, 0.2, 0.6 }
+    for _, delay in ipairs(delays) do
+        table.insert(self.state.pendingDefeatChecks, {
+            npc = npc,
+            fireAt = now + delay,
+            reason = reason or "post-hit"
+        })
+    end
+
+    return true
+end
+
+function MissionController:updatePendingDefeatChecks()
+    if not self.state.pendingDefeatChecks then return end
+
+    for i = #self.state.pendingDefeatChecks, 1, -1 do
+        local item = self.state.pendingDefeatChecks[i]
+
+        if self.state.elapsed >= item.fireAt then
+            self:tryMarkNPCDefeated(item.npc, item.reason or "post-hit")
+            table.remove(self.state.pendingDefeatChecks, i)
+        end
+    end
+end
+
 function MissionController:countWaveNPCs(waveIndex)
     local total = 0
     local active = 0
@@ -112,7 +217,7 @@ function MissionController:countWaveNPCs(waveIndex)
                     if self.playerRules and not self.playerRules:validateDefeat(npc, meta, "defeat-without-katana-hit") then
                         active = active + 1
                     else
-                        defeatedObjects[npc] = true
+                        self:markNPCDefeated(npc, meta, waveIndex, defeatedObjects)
                         defeated = defeated + 1
                     end
                 else
@@ -142,6 +247,70 @@ function MissionController:handlePlayerWeaponRuleViolation()
 
     self.state.playerWeaponRuleViolation = nil
     return false
+end
+
+function MissionController:isInvitationEnabled()
+    return self.settings.INVITATION_ENABLED ~= false
+end
+
+function MissionController:getInvitationAcceptedFact()
+    return self.settings.INVITATION_ACCEPTED_FACT or "waves_invitation_accepted"
+end
+
+function MissionController:getQuestFact(factName)
+    if not factName or factName == "" then return nil end
+
+    local ok, value = pcall(function()
+        local questsSystem = Game.GetQuestsSystem()
+        if not questsSystem then return nil end
+        return questsSystem:GetFactStr(factName)
+    end)
+
+    if ok then return value end
+    return nil
+end
+
+function MissionController:setQuestFact(factName, value)
+    if not factName or factName == "" then return false end
+
+    local ok = pcall(function()
+        local questsSystem = Game.GetQuestsSystem()
+        if not questsSystem then return end
+        questsSystem:SetFactStr(factName, value)
+    end)
+
+    return ok == true
+end
+
+function MissionController:updateInvitation(delta)
+    if not self:isInvitationEnabled() then return end
+    if self.state.missionActive then return end
+
+    self.state.invitationFactPollTimer = (self.state.invitationFactPollTimer or 0) + delta
+
+    local interval = self.settings.INVITATION_FACT_POLL_INTERVAL or 1.0
+    if interval <= 0 then return end
+    if self.state.invitationFactPollTimer < interval then return end
+
+    self.state.invitationFactPollTimer = 0
+
+    local factName = self:getInvitationAcceptedFact()
+    local value = tonumber(self:getQuestFact(factName)) or 0
+
+    if value <= 0 then return end
+
+    self.log(
+        "Invitation fact accepted; starting mission | fact=" ..
+        tostring(factName) ..
+        " | value=" ..
+        tostring(value)
+    )
+
+    if self.settings.INVITATION_RESET_FACT_ON_START ~= false then
+        self:setQuestFact(factName, 0)
+    end
+
+    self:startMission("invitation-fact")
 end
 
 function MissionController:handleUnknownWaveCollapse(waveIndex, total, defeated, unknown, minTrackedForCompletion)
@@ -276,7 +445,13 @@ function MissionController:processSpawnTracking(objects, meta)
     self.ai:setAllSpawnedFriendly()
 
     for _, spawnedObject in ipairs(trackedThisResult) do
-        self.ai:prime(spawnedObject)
+        local wave, meta = self.ai:getNPCWave(spawnedObject)
+
+        if self.ai:shouldSuppressHoldAwareness(spawnedObject, wave, meta) then
+            self.ai:primeQuietReady(spawnedObject, wave, meta)
+        else
+            self.ai:prime(spawnedObject)
+        end
     end
 
     self.ai:setAllSpawnedFriendly()
@@ -333,6 +508,8 @@ function MissionController:queueWave(waveIndex, options)
     self.state.waveAliveSeen[waveIndex] = false
     if not self.state.waveDefeatedObjects then self.state.waveDefeatedObjects = {} end
     self.state.waveDefeatedObjects[waveIndex] = {}
+    if not self.state.waveDespawnedDefeatedObjects then self.state.waveDespawnedDefeatedObjects = {} end
+    self.state.waveDespawnedDefeatedObjects[waveIndex] = {}
     self.state.countdownLogTimer = 0
     self.state.waveCompletionTimer = 0
 
@@ -599,8 +776,13 @@ function MissionController:updateWaveCompletion()
     end
 end
 
-function MissionController:startMission()
-    self.log("Starting mission | version=" .. tostring(self.modVersion))
+function MissionController:startMission(source)
+    self.log(
+        "Starting mission | version=" ..
+        tostring(self.modVersion) ..
+        " | source=" ..
+        tostring(source or "manual")
+    )
 
     self.spawner:despawnAll()
     if self.playerRules then self.playerRules:stopWave("mission-start") end
@@ -612,6 +794,7 @@ function MissionController:startMission()
     self.state.missionActive = true
     self.state.markerActive = false
     self.state.lastHUDText = ""
+    self.state.invitationFactPollTimer = 0
 
     self:setWaveNavigationMarker(1, "mission-start")
 
@@ -694,6 +877,7 @@ function MissionController:debugState()
     self.log("hashPending=" .. tostring(self.spawner:countPendingRequests()))
     self.log("noHashPending=" .. tostring(#self.state.pendingNoHashRequests))
     self.log("delayedCombatActions=" .. tostring(#self.state.delayedCombatActions))
+    self.log("pendingDefeatChecks=" .. tostring(self.state.pendingDefeatChecks and #self.state.pendingDefeatChecks or 0))
     self.log("pendingTeleportCorrections=" .. tostring(#self.state.pendingTeleportCorrections))
     self.log("activeTreasure=" .. tostring(self.state.activeTreasure ~= nil))
     self.log("trackedNPCs=" .. tostring(self.spawner:countTrackedNPCs()))
@@ -709,6 +893,9 @@ function MissionController:debugState()
     self.log("lastHUDText=" .. tostring(self.state.lastHUDText))
     self.log("playerWeaponRuleActive=" .. tostring(self.playerRules and self.playerRules:isRuleActive() or false))
     self.log("playerWeaponRuleViolation=" .. tostring(self.state.playerWeaponRuleViolation ~= nil))
+    self.log("invitationAcceptedFact=" .. tostring(self:getInvitationAcceptedFact()))
+    self.log("invitationAcceptedFactValue=" .. tostring(self:getQuestFact(self:getInvitationAcceptedFact())))
+    self.log("invitationFactPollTimer=" .. tostring(self.state.invitationFactPollTimer))
 
     if self.state.currentWaveIndex > 0 then
         local total, active, valid, defeated, unknown = self:countWaveNPCs(self.state.currentWaveIndex)
@@ -809,11 +996,15 @@ end
 function MissionController:onInit()
     self.log("Loaded | version=" .. tostring(self.modVersion))
 
-    if self.playerRules then
-        ObserveAfter("NPCPuppet", "OnHit", function(npc, evt)
+    ObserveAfter("NPCPuppet", "OnHit", function(npc, evt)
+        if self.playerRules then
             self.playerRules:onNPCPuppetHit(npc, evt)
-        end)
-    end
+        end
+
+        if not self:tryMarkNPCDefeated(npc, "on-hit") then
+            self:schedulePostHitDefeatChecks(npc, "post-hit")
+        end
+    end)
 
     ObserveAfter("PreventionSpawnSystem", "SpawnRequestFinished", function(_, result)
         self.log("SpawnRequestFinished observed AFTER")
@@ -864,6 +1055,7 @@ function MissionController:onUpdate(delta)
     self.state.spawnTimeoutTimer = self.state.spawnTimeoutTimer - delta
     self.state.waveCompletionTimer = self.state.waveCompletionTimer - delta
 
+    self:updateInvitation(delta)
     self:checkMission()
     self:updatePendingWaveMarker(delta)
     self.markers:update(delta)
@@ -874,6 +1066,8 @@ function MissionController:onUpdate(delta)
     if self.playerRules then
         self.playerRules:update(delta)
     end
+    self:updatePendingDefeatChecks()
+    self.ai:updateHeldNPCs()
     self.ai:updateDelayedAwareness()
     self.spawner:checkSpawnTimeouts()
 

@@ -25,6 +25,224 @@ function AI:getDistanceFromPlayer(entity)
     return 9999
 end
 
+function AI:getNPCWave(npc)
+    local meta = self.state.spawnedObjectMetas[npc]
+    local wave = meta and self.waves[meta.waveIndex] or nil
+
+    return wave, meta
+end
+
+function AI:getHoldUntilPlayerDistance(wave)
+    local distance = wave and tonumber(wave.holdUntilPlayerDistance)
+
+    if distance and distance > 0 then
+        return distance
+    end
+
+    return nil
+end
+
+function AI:isHoldingUntilPlayer(npc, wave, meta)
+    if not npc then return false end
+
+    if not wave or not meta then
+        local resolvedWave, resolvedMeta = self:getNPCWave(npc)
+        wave = wave or resolvedWave
+        meta = meta or resolvedMeta
+    end
+
+    local holdDistance = self:getHoldUntilPlayerDistance(wave)
+    if not holdDistance then return false end
+    if meta and meta.holdReleased == true then return false end
+
+    local dist = self:getDistanceFromPlayer(npc)
+
+    if dist <= holdDistance then
+        if meta then
+            meta.holdReleased = true
+            meta.holdReleasedAt = self.state.elapsed
+        end
+
+        self.log(
+            "Hold-until-player released | wave=" ..
+            tostring(wave and wave.name or "unknown") ..
+            " | index=" ..
+            tostring(meta and meta.spawnIndex or "unknown") ..
+            " | dist=" ..
+            tostring(math.floor(dist * 10) / 10) ..
+            " | threshold=" ..
+            tostring(holdDistance)
+        )
+
+        return false
+    end
+
+    return true
+end
+
+function AI:shouldSuppressHoldAwareness(npc, wave, meta)
+    if not wave or not meta then
+        local resolvedWave, resolvedMeta = self:getNPCWave(npc)
+        wave = wave or resolvedWave
+        meta = meta or resolvedMeta
+    end
+
+    if wave and wave.silentUntilPlayerDistance == false then
+        return false
+    end
+
+    return self:isHoldingUntilPlayer(npc, wave, meta)
+end
+
+function AI:triggerHoldWakeAttack(npc, wave, meta)
+    if not npc or not wave or wave.forceMeleeAttackOnWake ~= true then return false end
+    if not meta or meta.holdReleased ~= true or meta.holdWakeAttackSent == true then return false end
+
+    meta.holdWakeAttackSent = true
+
+    local quietCombat = wave.suppressCombatBarks == true or wave.silentUntilPlayerDistance == true
+
+    self:forceAggro(npc, {
+        suppressReactionPreset = quietCombat,
+        suppressReactionTrigger = quietCombat,
+        suppressStimReaction = quietCombat,
+        suppressCombatThreat = quietCombat and wave.quietWakeSuppressCombatThreat == true,
+        suppressCombatPreset = quietCombat and wave.quietWakeSuppressCombatPreset == true
+    })
+    self:sendMeleeAttack(npc)
+
+    self.log(
+        "Hold wake attack sent | wave=" ..
+        tostring(wave.name) ..
+        " | index=" ..
+        tostring(meta.spawnIndex or "unknown")
+    )
+
+    return true
+end
+
+function AI:setAttitudeToPlayer(npc, attitude)
+    local player = Game.GetPlayer()
+    if not player or not npc then return false end
+
+    local ok = pcall(function()
+        local npcAtt = npc:GetAttitudeAgent()
+        local playerAtt = player:GetAttitudeAgent()
+
+        if npcAtt and playerAtt then
+            npcAtt:SetAttitudeTowards(playerAtt, attitude)
+            playerAtt:SetAttitudeTowards(npcAtt, attitude)
+        end
+    end)
+
+    return ok == true
+end
+
+function AI:setHostileToPlayer(npc)
+    local ok = pcall(function()
+        local npcAtt = npc:GetAttitudeAgent()
+
+        if npcAtt then
+            npcAtt:SetAttitudeGroup(n"hostile")
+        end
+    end)
+
+    return self:setAttitudeToPlayer(npc, EAIAttitude.AIA_Hostile) or ok == true
+end
+
+function AI:setPassiveUntilRelease(npc, wave, meta)
+    if not npc or not wave or wave.passiveUntilPlayerDistance == false then return false end
+    if meta and meta.holdReleased == true then return false end
+
+    local attitude = EAIAttitude.AIA_Neutral
+
+    if wave.passiveUntilPlayerAttitude == "friendly" then
+        attitude = EAIAttitude.AIA_Friendly
+    end
+
+    local ok = self:setAttitudeToPlayer(npc, attitude)
+
+    if ok and meta and meta.passiveUntilReleaseLogged ~= true then
+        meta.passiveUntilReleaseLogged = true
+        self.log(
+            "Passive hold attitude applied | wave=" ..
+            tostring(wave.name or "unknown") ..
+            " | index=" ..
+            tostring(meta.spawnIndex or "unknown") ..
+            " | attitude=" ..
+            tostring(wave.passiveUntilPlayerAttitude or "neutral")
+        )
+    end
+
+    return ok
+end
+
+function AI:getHeldHomeDistance(npc, meta)
+    local home = meta and meta.pos or nil
+    if not npc or not home then return nil end
+
+    local ok, pos = pcall(function()
+        return npc:GetWorldPosition()
+    end)
+
+    if ok and pos then
+        return self.geometry.distance(pos, home)
+    end
+
+    return nil
+end
+
+function AI:enforceHoldPosition(npc, wave, meta)
+    if not npc or not wave or not meta or not meta.pos then return false end
+    if wave.holdPositionUntilPlayerDistance ~= true then return false end
+    if meta.holdReleased == true then return false end
+
+    local interval = tonumber(wave.holdPositionRefreshInterval) or 1.0
+
+    if meta.lastHoldPositionCommandAt and self.state.elapsed - meta.lastHoldPositionCommandAt < interval then
+        return false
+    end
+
+    local drift = self:getHeldHomeDistance(npc, meta)
+    local tolerance = tonumber(wave.holdPositionTolerance) or 0.75
+    if drift and drift <= tolerance then return false end
+
+    meta.lastHoldPositionCommandAt = self.state.elapsed
+
+    local sent = self:sendMoveToPosition(
+        npc,
+        meta.pos,
+        wave.holdPositionMovementType or "Walk",
+        tonumber(wave.holdPositionStopDistance) or 0.25,
+        nil,
+        {
+            ignoreInCombat = true,
+            removeAfterCombat = false,
+            useStart = false,
+            useStop = false,
+            alwaysUseStealth = false
+        }
+    )
+
+    if sent then
+        self:setPassiveUntilRelease(npc, wave, meta)
+
+        if meta.holdPositionLogged ~= true then
+            meta.holdPositionLogged = true
+            self.log(
+                "Hold position enforced | wave=" ..
+                tostring(wave.name or "unknown") ..
+                " | index=" ..
+                tostring(meta.spawnIndex or "unknown") ..
+                " | drift=" ..
+                tostring(drift and math.floor(drift * 10) / 10 or "unknown")
+            )
+        end
+    end
+
+    return sent
+end
+
 function AI:wake(npc)
     if not npc then return end
 
@@ -479,22 +697,18 @@ function AI:sendMoveToPlayer(npc, forceCommand)
     )
 end
 
-function AI:prime(npc)
+function AI:prime(npc, options)
     local player = Game.GetPlayer()
     if not player or not npc then return end
 
+    options = options or {}
+
     self:wake(npc)
+    self:setHostileToPlayer(npc)
 
-    pcall(function()
-        local npcAtt = npc:GetAttitudeAgent()
-        local playerAtt = player:GetAttitudeAgent()
-
-        if npcAtt and playerAtt then
-            pcall(function() npcAtt:SetAttitudeGroup(n"hostile") end)
-            npcAtt:SetAttitudeTowards(playerAtt, EAIAttitude.AIA_Hostile)
-            playerAtt:SetAttitudeTowards(npcAtt, EAIAttitude.AIA_Hostile)
-        end
-    end)
+    if options.suppressReactionPreset == true then
+        return
+    end
 
     pcall(function()
         local reactionComp = npc.reactionComponent
@@ -507,6 +721,63 @@ function AI:prime(npc)
             )
         end
     end)
+end
+
+function AI:primeQuietReady(npc, wave, meta)
+    if not npc or not wave or wave.readyUntilPlayerDistance ~= true then return false end
+    meta = meta or self.state.spawnedObjectMetas[npc]
+    if not meta then return false end
+
+    local refreshInterval = tonumber(wave.quietReadyRefreshInterval) or 4.0
+    local readyMode = wave.quietReadyMode or "aware"
+
+    if
+        meta.quietReadyPrimed == true and
+        meta.quietReadyPrimedAt and
+        self.state.elapsed - meta.quietReadyPrimedAt < refreshInterval
+    then
+        return true
+    end
+
+    meta.quietReadyPrimed = true
+    meta.quietReadyPrimedAt = self.state.elapsed
+
+    self:setPassiveUntilRelease(npc, wave, meta)
+
+    if readyMode == "weaponOnly" then
+        if wave.wakeQuietReady == true then
+            self:wake(npc)
+        end
+    else
+        self:prime(npc, { suppressReactionPreset = true })
+    end
+
+    self:switchToPrimaryWeapon(npc)
+
+    if readyMode ~= "weaponOnly" and wave.lookAtPlayerUntilPlayerDistance ~= false then
+        self:sendLookAtTarget(npc, refreshInterval + 0.5)
+    end
+
+    local statuses = wave.quietReadyStatusEffects
+    if type(statuses) == "table" then
+        for _, statusId in ipairs(statuses) do
+            self:applyStatusEffect(npc, statusId)
+        end
+    end
+
+    if meta.quietReadyLogged ~= true then
+        meta.quietReadyLogged = true
+        self.log(
+            "Quiet ready applied | wave=" ..
+            tostring(wave.name or "unknown") ..
+            " | index=" ..
+            tostring(meta.spawnIndex or "unknown") ..
+            " | mode=" ..
+            tostring(readyMode)
+        )
+    end
+
+    return true
 end
 
 function AI:primeSearchAlert(npc, wave)
@@ -582,14 +853,26 @@ function AI:isPlayerInCombat()
     return ok and result == true
 end
 
-function AI:shouldForceCombatWithPlayer(npc)
-    local dist = self:getDistanceFromPlayer(npc)
+function AI:shouldForceCombatWithPlayer(npc, wave, meta)
+    if not wave or not meta then
+        local resolvedWave, resolvedMeta = self:getNPCWave(npc)
+        wave = wave or resolvedWave
+        meta = meta or resolvedMeta
+    end
 
-    if dist <= self.settings.AUTO_COMBAT_DISTANCE then
+    if self:isHoldingUntilPlayer(npc, wave, meta) then
+        return false
+    end
+
+    local dist = self:getDistanceFromPlayer(npc)
+    local autoCombatDistance = (wave and tonumber(wave.autoCombatDistance)) or self.settings.AUTO_COMBAT_DISTANCE
+    local combatJoinDistance = (wave and tonumber(wave.combatJoinDistance)) or self.settings.COMBAT_JOIN_DISTANCE
+
+    if dist <= autoCombatDistance then
         return true
     end
 
-    return self:isPlayerInCombat() and dist <= self.settings.COMBAT_JOIN_DISTANCE
+    return self:isPlayerInCombat() and dist <= combatJoinDistance
 end
 
 function AI:sendSearchMoveAroundHome(npc, allowPlayerDirectedSearch)
@@ -599,6 +882,10 @@ function AI:sendSearchMoveAroundHome(npc, allowPlayerDirectedSearch)
     local home = meta and meta.pos or nil
     if not home then return false end
     local wave = meta and self.waves[meta.waveIndex] or nil
+
+    if self:isHoldingUntilPlayer(npc, wave, meta) then
+        return false
+    end
 
     local currentPos = nil
     local okPos = pcall(function()
@@ -638,9 +925,12 @@ function AI:sendSearchMoveAroundHome(npc, allowPlayerDirectedSearch)
 
             if len > 0.01 then
                 local stepDistance = (wave and wave.searchStepDistance) or self.settings.SEARCH_STEP_DISTANCE
+                local autoCombatDistance =
+                    (wave and tonumber(wave.autoCombatDistance)) or
+                    self.settings.AUTO_COMBAT_DISTANCE
                 local step = math.min(
                     stepDistance,
-                    math.max(2.0, distToPlayer - self.settings.AUTO_COMBAT_DISTANCE)
+                    math.max(2.0, distToPlayer - autoCombatDistance)
                 )
 
                 target = {
@@ -704,26 +994,34 @@ function AI:sendSearchMoveAroundHome(npc, allowPlayerDirectedSearch)
     )
 end
 
-function AI:forceAggro(npc)
+function AI:forceAggro(npc, options)
     local player = Game.GetPlayer()
     if not player or not npc then return end
 
+    options = options or {}
+
     self:wake(npc)
-    self:prime(npc)
+    self:prime(npc, {
+        suppressReactionPreset = options.suppressReactionPreset == true
+    })
 
-    pcall(function()
-        local reactionComp = npc.reactionComponent
-        if reactionComp then
-            reactionComp:TriggerCombat(player)
-        end
-    end)
+    if options.suppressReactionTrigger ~= true then
+        pcall(function()
+            local reactionComp = npc.reactionComponent
+            if reactionComp then
+                reactionComp:TriggerCombat(player)
+            end
+        end)
+    end
 
-    pcall(function()
-        local stim = npc:GetStimReactionComponent()
-        if stim then
-            stim:ActivateReactionLookAt(player, true, false, 30.0, true)
-        end
-    end)
+    if options.suppressStimReaction ~= true then
+        pcall(function()
+            local stim = npc:GetStimReactionComponent()
+            if stim then
+                stim:ActivateReactionLookAt(player, true, false, 30.0, true)
+            end
+        end)
+    end
 
     pcall(function()
         local controller = npc:GetAIControllerComponent()
@@ -733,8 +1031,13 @@ function AI:forceAggro(npc)
         end
     end)
 
-    self:sendCombatThreat(npc)
-    self:setAggressiveCombatPreset(npc)
+    if options.suppressCombatThreat ~= true then
+        self:sendCombatThreat(npc)
+    end
+
+    if options.suppressCombatPreset ~= true then
+        self:setAggressiveCombatPreset(npc)
+    end
 end
 
 function AI:chase(npc, forceCommand)
@@ -742,6 +1045,10 @@ function AI:chase(npc, forceCommand)
 
     local meta = self.state.spawnedObjectMetas[npc]
     local wave = meta and self.waves[meta.waveIndex] or nil
+
+    if not forceCommand and self:isHoldingUntilPlayer(npc, wave, meta) then
+        return
+    end
 
     if wave and wave.disableAIMovement then
         self:prime(npc)
@@ -755,7 +1062,11 @@ function AI:chase(npc, forceCommand)
     end
 
     local dist = self:getDistanceFromPlayer(npc)
-    local directChaseDistance = self.settings.DIRECT_CHASE_DISTANCE or self.settings.AUTO_COMBAT_DISTANCE or 18.0
+    local directChaseDistance =
+        (wave and tonumber(wave.directChaseDistance)) or
+        self.settings.DIRECT_CHASE_DISTANCE or
+        self.settings.AUTO_COMBAT_DISTANCE or
+        18.0
 
     if not forceCommand and dist > directChaseDistance then
         self:prime(npc)
@@ -1018,6 +1329,22 @@ function AI:scheduleAwareness(npc, delay, reason)
 end
 
 function AI:scheduleSpawnAwarenessBurst(npc)
+    if self:shouldSuppressHoldAwareness(npc) then
+        local _, meta = self:getNPCWave(npc)
+
+        if meta and meta.holdAwarenessSuppressedLogged ~= true then
+            meta.holdAwarenessSuppressedLogged = true
+            self.log(
+                "Spawn awareness suppressed by hold-until-player | wave=" ..
+                tostring(meta.waveName or "unknown") ..
+                " | index=" ..
+                tostring(meta.spawnIndex or "unknown")
+            )
+        end
+
+        return
+    end
+
     local delays = self.settings.SPAWN_AWARENESS_DELAYS or { 0.45, 0.9, 1.5, 2.5, 4.0, 6.0 }
 
     for _, delay in ipairs(delays) do
@@ -1035,14 +1362,16 @@ function AI:updateDelayedAwareness()
             end)
 
             if item.npc and okDefined and defined then
-                self.log("Delayed awareness refresh: " .. tostring(item.reason))
-                self:prime(item.npc)
-
                 local meta = self.state.spawnedObjectMetas[item.npc]
                 local wave = meta and self.waves[meta.waveIndex] or nil
 
-                if wave and (wave.forceMeleeAttack or wave.alwaysSearchPlayer) then
-                    self:updateEncounterNPC(item.npc, true)
+                if not self:shouldSuppressHoldAwareness(item.npc, wave, meta) then
+                    self.log("Delayed awareness refresh: " .. tostring(item.reason))
+                    self:prime(item.npc)
+
+                    if wave and (wave.forceMeleeAttack or wave.alwaysSearchPlayer) then
+                        self:updateEncounterNPC(item.npc, true)
+                    end
                 end
             end
 
@@ -1061,17 +1390,44 @@ function AI:updateEncounterNPC(npc, allowSearchMove)
     local meta = self.state.spawnedObjectMetas[npc]
     local wave = meta and self.waves[meta.waveIndex] or nil
 
+    if self:isHoldingUntilPlayer(npc, wave, meta) then
+        self:setPassiveUntilRelease(npc, wave, meta)
+        self:enforceHoldPosition(npc, wave, meta)
+        return
+    end
+
+    local wakeAttackSent = self:triggerHoldWakeAttack(npc, wave, meta)
+
     if wave and wave.disableAIMovement then
-        self:prime(npc)
+        if not wakeAttackSent then
+            self:prime(npc)
+        end
+
         return
     end
 
     self:prime(npc)
 
-    if self:isNPCInCombat(npc) or self:shouldForceCombatWithPlayer(npc) then
+    if self:isNPCInCombat(npc) or self:shouldForceCombatWithPlayer(npc, wave, meta) then
         self:chase(npc, false)
     elseif allowSearchMove then
         self:sendSearchMoveAroundHome(npc, false)
+    end
+end
+
+function AI:updateHeldNPCs()
+    for _, npc in ipairs(self.state.spawnedObjects) do
+        local wave, meta = self:getNPCWave(npc)
+
+        if wave and meta and self:getHoldUntilPlayerDistance(wave) then
+            if self:isHoldingUntilPlayer(npc, wave, meta) then
+                self:setPassiveUntilRelease(npc, wave, meta)
+                self:primeQuietReady(npc, wave, meta)
+                self:enforceHoldPosition(npc, wave, meta)
+            elseif wave.forceMeleeAttackOnWake == true and meta.holdWakeAttackSent ~= true then
+                self:updateEncounterNPC(npc, false)
+            end
+        end
     end
 end
 

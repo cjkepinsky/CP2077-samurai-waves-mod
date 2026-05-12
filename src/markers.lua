@@ -297,6 +297,7 @@ function Markers:clear()
     end
 
     self.state.markerActive = false
+    self.state.markerTriggerActive = false
     self.state.currentMarkerWaveIndex = nil
     self.state.activeMappinPos = nil
     self.state.activeRouteCarrierMappin = nil
@@ -319,6 +320,7 @@ function Markers:setWaveMarker(waveIndex)
     if result then
         self.state.activeMappin = result
         self.state.markerActive = true
+        self.state.markerTriggerActive = not (self.state.currentWaveIndex and self.state.currentWaveIndex > 0)
         self.state.currentMarkerWaveIndex = waveIndex
         self.state.activeMappinPos = self:copyPos(markerPos)
         self.state.markerRouteRefreshTimer = self:getRouteRefreshInterval()
@@ -366,6 +368,7 @@ function Markers:setCombatMarker(posData, waveIndex)
     if result then
         self.state.activeMappin = result
         self.state.markerActive = false
+        self.state.markerTriggerActive = false
         self.state.currentMarkerWaveIndex = nil
         self.state.activeMappinPos = self:copyPos(posData)
         self.state.markerRouteRefreshTimer = 0
@@ -402,6 +405,7 @@ function Markers:testMarkerOnPlayer()
     if result then
         self.state.activeMappin = result
         self.state.markerActive = true
+        self.state.markerTriggerActive = false
         self.state.activeMappinPos = {
             x = playerPos.x,
             y = playerPos.y,
@@ -465,6 +469,7 @@ function Markers:recreateActiveWaveMarker(reason)
 
     self.state.activeMappin = nil
     self.state.markerActive = false
+    self.state.markerTriggerActive = false
     self.state.currentMarkerWaveIndex = nil
     self.state.activeMappinPos = nil
     self.state.markerRouteRefreshTimer = 0

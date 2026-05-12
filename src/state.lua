@@ -12,6 +12,7 @@ end
 function State:resetMission()
     self.missionActive = false
     self.markerActive = false
+    self.markerTriggerActive = false
     self.activeMappin = nil
     self.activeMappinPos = nil
     self.activeRouteCarrierMappin = nil

@@ -176,7 +176,9 @@ function MissionController:handleUnknownWaveCollapse(waveIndex, total, defeated,
 
     if self.treasure then self.treasure:clear() end
     self.spawner:despawnAll()
-    self:queueWave(waveIndex)
+    self:queueWave(waveIndex, {
+        keepNavigationMarker = self.state.activeMappin ~= nil and self.state.currentMarkerWaveIndex == waveIndex
+    })
 
     return true
 end
@@ -234,7 +236,7 @@ function MissionController:updatePendingSpawnTracks()
     end
 end
 
-function MissionController:queueWave(waveIndex)
+function MissionController:queueWave(waveIndex, options)
     local wave = self.waves[waveIndex]
 
     if not wave then
@@ -242,8 +244,24 @@ function MissionController:queueWave(waveIndex)
         return
     end
 
+    local keepNavigationMarker =
+        options and
+        options.keepNavigationMarker == true and
+        self.state.activeMappin ~= nil and
+        self.state.currentMarkerWaveIndex == waveIndex
+
     self.state.missionActive = true
-    self.markers:clear()
+    if not keepNavigationMarker then
+        self.markers:clear()
+    else
+        self.state.markerTriggerActive = false
+
+        self.log(
+            "Keeping wave navigation marker during active wave | wave=" ..
+            tostring(waveIndex)
+        )
+    end
+
     self:clearPendingWaveMarker()
 
     self.log("Queueing " .. wave.name .. " | count=" .. tostring(wave.count))
@@ -297,7 +315,9 @@ function MissionController:queueWave(waveIndex)
         )
     end
 
-    self.markers:setCombatMarker(firstQueuedPos, waveIndex)
+    if not keepNavigationMarker then
+        self.markers:setCombatMarker(firstQueuedPos, waveIndex)
+    end
 
     if self.treasure then
         self.treasure:activateForWave(waveIndex, wave, self:getTreasureFallbackPos(wave, firstQueuedPos))
@@ -555,7 +575,7 @@ function MissionController:checkMission()
     local player = Game.GetPlayer()
     if not player then return end
 
-    if self.state.markerActive and self.state.currentMarkerWaveIndex ~= nil then
+    if self.state.markerActive and self.state.markerTriggerActive and self.state.currentMarkerWaveIndex ~= nil then
         local playerPos = player:GetWorldPosition()
         local markerWave = self.waves[self.state.currentMarkerWaveIndex]
         local triggerDistance = (markerWave and markerWave.triggerDistance) or self.settings.START_TRIGGER_DISTANCE
@@ -574,9 +594,9 @@ function MissionController:checkMission()
                 tostring(triggerDistance)
             )
 
-            self.markers:clear()
             self:clearPendingWaveMarker()
-            self:queueWave(waveToStart)
+            self.state.markerTriggerActive = false
+            self:queueWave(waveToStart, { keepNavigationMarker = true })
         end
     end
 end
@@ -587,6 +607,7 @@ function MissionController:debugState()
     self.log("modVersion=" .. tostring(self.modVersion))
     self.log("missionActive=" .. tostring(self.state.missionActive))
     self.log("markerActive=" .. tostring(self.state.markerActive))
+    self.log("markerTriggerActive=" .. tostring(self.state.markerTriggerActive))
     self.log("currentWaveIndex=" .. tostring(self.state.currentWaveIndex))
     self.log("highestWaveStarted=" .. tostring(self.state.highestWaveStarted))
     self.log("currentMarkerWaveIndex=" .. tostring(self.state.currentMarkerWaveIndex))

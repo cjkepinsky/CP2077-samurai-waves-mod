@@ -6,7 +6,7 @@ Waves is a Cyberpunk 2077 mod built on Cyber Engine Tweaks. It adds a sequence o
 
 The mod is built around authored wave locations. Each wave can define its own NPC records, spawn line or spawn points, marker position, search behavior, spawn retries, and reward.
 
-Current version: `0.9.0`. `Waves.log` includes the version in its log prefix, for example `[Waves v0.9.0]`, so bug reports can always be tied to a specific build.
+Current version: `0.9.1`. `Waves.log` includes the version in its log prefix, for example `[Waves v0.9.1]`, so bug reports can always be tied to a specific build.
 
 ### Requirements
 
@@ -38,8 +38,9 @@ The runtime log is written to `Waves.log` in the mod folder.
 2. The mod places a wave marker on the map and asks the game for a GPS route.
 3. Go to the marked location. By default, the wave starts when the player is within `150m` of the marker.
 4. Defeat the enemies.
-5. After the wave is cleared, the stash reward is paid and the next wave marker is placed.
-6. Repeat until all waves are cleared.
+5. The GPS marker stays active while the wave is running, so it is easier to keep orientation around the enemy location.
+6. After the wave is cleared, the stash reward is paid and the next wave marker replaces the old one.
+7. Repeat until all waves are cleared.
 
 Each wave has a reward configured in `config/waves.lua`. The reward is granted by script after the wave is cleared; it is not a physical loot container.
 
@@ -139,7 +140,7 @@ Waves to mod do Cyberpunk 2077 oparty o Cyber Engine Tweaks. Dodaje sekwencję f
 
 Mod jest zbudowany wokół ręcznie ustawianych fal. Każda fala może mieć własne rekordy NPC, linię albo punkty spawnu, pozycję markera, zachowanie szukania gracza, retry spawnu i nagrodę.
 
-Aktualna wersja: `0.9.0`. `Waves.log` zawiera wersję w prefixie logu, np. `[Waves v0.9.0]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
+Aktualna wersja: `0.9.1`. `Waves.log` zawiera wersję w prefixie logu, np. `[Waves v0.9.1]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
 
 ### Wymagania
 
@@ -171,8 +172,9 @@ Log działania moda zapisuje się w pliku `Waves.log` w folderze moda.
 2. Mod ustawi marker fali na mapie i poprosi grę o trasę GPS.
 3. Jedź albo idź do zaznaczonego miejsca. Domyślnie fala startuje, gdy gracz jest w promieniu `150m` od markera.
 4. Pokonaj przeciwników.
-5. Po wyczyszczeniu fali mod wypłaca nagrodę ze skrytki i ustawia marker kolejnej fali.
-6. Powtarzaj aż do zakończenia wszystkich fal.
+5. Marker GPS zostaje aktywny podczas trwania fali, żeby łatwiej było orientować się wokół lokacji przeciwników.
+6. Po wyczyszczeniu fali mod wypłaca nagrodę ze skrytki, a marker kolejnej fali zastępuje stary marker.
+7. Powtarzaj aż do zakończenia wszystkich fal.
 
 Każda fala ma nagrodę skonfigurowaną w `config/waves.lua`. Nagroda jest wypłacana skryptem po wyczyszczeniu fali; to nie jest fizyczny kontener z lootem.
 

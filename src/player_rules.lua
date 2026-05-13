@@ -237,6 +237,56 @@ function PlayerRules:isKatanaItemID(itemID)
     return self:isKatanaIDString(self:itemIDToString(itemID))
 end
 
+function PlayerRules:getEquippedWeaponSummary()
+    local _player, _transactionSystem, equipmentData = self:getPlayerEquipmentData()
+    if not equipmentData then return nil end
+
+    local summary = {
+        total = 0,
+        katana = 0,
+        nonKatana = 0,
+        ids = {}
+    }
+
+    for slot = 0, 2 do
+        local itemID = self:getWeaponSlot(equipmentData, slot)
+
+        if not self:isEmptyItemID(itemID) then
+            local id = self:itemIDToString(itemID)
+            summary.total = summary.total + 1
+            table.insert(summary.ids, id)
+
+            if self:isKatanaItemID(itemID) then
+                summary.katana = summary.katana + 1
+            else
+                summary.nonKatana = summary.nonKatana + 1
+            end
+        end
+    end
+
+    return summary
+end
+
+function PlayerRules:hasOnlyKatanaWeaponsEquipped()
+    local summary = self:getEquippedWeaponSummary()
+    if not summary then return false, "equipment-unavailable" end
+    if summary.total <= 0 then return false, "no-equipped-weapons" end
+    if summary.katana <= 0 then return false, "no-equipped-katana" end
+    if summary.nonKatana > 0 then return false, table.concat(summary.ids, ",") end
+
+    return true, table.concat(summary.ids, ",")
+end
+
+function PlayerRules:canTrustEquippedKatanaForDefeat()
+    if not self.activeRule then return false end
+    if self.activeRule.trustEquippedKatanaForDefeat == false then return false end
+
+    local ok, detail = self:hasOnlyKatanaWeaponsEquipped()
+    if ok then return true, detail end
+
+    return false, detail
+end
+
 function PlayerRules:getWeaponRecordID(evt)
     if not evt or not evt.attackData then return "" end
 
@@ -385,15 +435,54 @@ function PlayerRules:hasKatanaHit(npc)
     return self.katanaHitObjects and self.katanaHitObjects[npc] ~= nil
 end
 
-function PlayerRules:validateDefeat(npc, meta, reason)
+function PlayerRules:validateDefeat(npc, meta, reason, options)
     if not self:isRuleActive() then return true end
     if not meta or meta.waveIndex ~= self.activeWaveIndex then return true end
     if not self:shouldRequireKatanaDefeat() then return true end
     if self:hasKatanaHit(npc) then return true end
 
+    options = options or {}
+    local suppressViolation = options.suppressViolation == true
+
+    if not suppressViolation then
+        local equippedKatanaOK, equippedDetail = self:canTrustEquippedKatanaForDefeat()
+
+        if equippedKatanaOK then
+            self:markKatanaHit(npc, "equipped-katana-fallback")
+            self.log(
+                "Player weapon rule accepted defeat by equipped katana fallback | wave=" ..
+                tostring(self.activeWaveIndex) ..
+                " | reason=" ..
+                tostring(reason or "defeat-without-katana-hit") ..
+                " | equipped=" ..
+                tostring(equippedDetail)
+            )
+            return true
+        end
+
+        self.log(
+            "Player weapon rule could not use equipped katana fallback | wave=" ..
+            tostring(self.activeWaveIndex) ..
+            " | reason=" ..
+            tostring(reason or "defeat-without-katana-hit") ..
+            " | equipped=" ..
+            tostring(equippedDetail)
+        )
+    end
+
     if not self.invalidDefeatObjects[npc] then
         self.invalidDefeatObjects[npc] = true
-        self:flagViolation(reason or "defeat-without-katana-hit", "no-katana-hit")
+
+        if suppressViolation then
+            self.log(
+                "Player weapon rule blocked defeat without violation | wave=" ..
+                tostring(self.activeWaveIndex) ..
+                " | reason=" ..
+                tostring(reason or "defeat-without-katana-hit")
+            )
+        else
+            self:flagViolation(reason or "defeat-without-katana-hit", "no-katana-hit")
+        end
     end
 
     return false
@@ -673,6 +762,19 @@ function PlayerRules:onNPCPuppetHit(npc, evt)
     end
 
     if weaponID == "" then
+        local equippedKatanaOK, equippedDetail = self:canTrustEquippedKatanaForDefeat()
+
+        if equippedKatanaOK then
+            self:markKatanaHit(npc, "unknown-hit-equipped-katana")
+            self.log(
+                "Player weapon rule treated unknown hit as katana | wave=" ..
+                tostring(self.activeWaveIndex) ..
+                " | equipped=" ..
+                tostring(equippedDetail)
+            )
+            return
+        end
+
         weaponID = "unknown"
     end
 

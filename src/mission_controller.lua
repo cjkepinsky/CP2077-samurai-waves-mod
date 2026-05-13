@@ -225,7 +225,9 @@ function MissionController:countWaveNPCs(waveIndex)
                 end
             else
                 if self.playerRules then
-                    self.playerRules:validateDefeat(npc, meta, "unknown-without-katana-hit")
+                    self.playerRules:validateDefeat(npc, meta, "unknown-without-katana-hit", {
+                        suppressViolation = true
+                    })
                 end
                 unknown = unknown + 1
             end

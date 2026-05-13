@@ -75,7 +75,36 @@ return function(CharacterTDBID)
             searchStopDistance = 0.0,
             searchAlwaysUseStealth = false,
             searchAlertStatusEffects = {}
+        },
+        actLikeSamurai = {
+            quietReadyStatusEffects = {
+                "BaseStatusEffect.IgnoreWeaponSafe"
+            },
+            forceMeleeAttackOnWake = true,
+            forceMeleeAttack = true,
+            alwaysSearchPlayer = true,
+            searchAroundHomeOnly = true,
+            searchPlayerRadius = 10.0,
+            searchMovementType = cautiousSearchMovementType,
+            searchStepDistance = 2.0,
+            searchRadius = 10.0,
+            searchLeashDistance = 10.0,
+            searchStopDistance = 10.0,
+            searchAlwaysUseStealth = true,
+            searchAlertStatusEffects = {}
         }
+    }
+
+    local playerKatanaOnly = {
+        type = "katanaOnly",
+        katanaItem = "Items.Preset_Katana_Wakako",
+        blockQuickhacks = true,
+        quickhackImmunityStat = "QuickHackImmunity",
+        requireKatanaHitForDefeat = true,
+        violationAction = "restartWave",
+        startMessage = "Katana only for this contract. Quickhacks are blocked.",
+        warningMessage = "Katana only for this contract. Quickhacks are blocked.",
+        violationMessage = "Katana only. Restarting wave."
     }
 
     local function applyOptionGroup(wave, group)
@@ -157,7 +186,8 @@ return function(CharacterTDBID)
             searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
             startMessage = "Members of Crickets Club are after you!",
-            forceMeleeAttack = true
+            forceMeleeAttack = true,
+            playerWeaponRule = playerKatanaOnly,
         },
         {
             name = "Wave 2 - Baseballs Club",
@@ -197,12 +227,13 @@ return function(CharacterTDBID)
             pushSpawnAway = true,
             disablePostSpawnCorrection = true,
             startMessage = "THE BAT BOYS ARE COMING",
-            forceMeleeAttack = true
+            forceMeleeAttack = true,
+            playerWeaponRule = playerKatanaOnly,
         },
         {
             name = "Wave 3 - Blacksmiths Club",
             club = "BLACKSMITHS CLUB",
-            count = 15,
+            count = 6,
             npcs = {
                 C("animals_bouncer2_hmelee2_hammer_mba_rare"),
                 C("animals_elite2_hmelee2_hammer_mba_rare"),
@@ -211,10 +242,19 @@ return function(CharacterTDBID)
                 C("arasaka_sumo_hmelee2_hammer_mb_rare"),
                 C("lch_animals_elite2_hmelee2_hammer_mba_rare")
             },
-            spawnLine = {
-                edgeA = { x = -1434.6975, y = 1261.6774, z = 23.071434, w = 1 },
-                edgeB = { x = -1422.3112, y = 1263.5642, z = 23.077179, w = 1 }
+            spawnPoints = {
+                { x = -1435.4368, y = 1302.5973, z = 27.074898, w = 1 }, -- przed windą
+                { x = -1419.4817, y = 1292.4565, z = 27.082397, w = 1 },
+                { x = -1452.3234, y = 1313.317, z = 119.0824, w = 1 }, -- sklep z bronią
+                { x = -1400.0416, y = 1268.4159, z = 119.064896, w = 1 },
+                { x = -1389.5636, y = 1283.7878, z = 123.0824, w = 1 }, -- obok mieszkania
+                { x = -1450.1914, y = 1276.2333, z = 23.096855, w = 1 } -- na zewnątrz
+
             },
+            --spawnLine = {
+            --    edgeA = { x = -1434.6975, y = 1261.6774, z = 23.071434, w = 1 },
+            --    edgeB = { x = -1422.3112, y = 1263.5642, z = 23.077179, w = 1 }
+            --},
             lockSpawnPosition = true,
             humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
             skipEmptySpawnRetries = skipEmptySpawnRetries,
@@ -231,7 +271,8 @@ return function(CharacterTDBID)
             searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
             startMessage = "Lookout! Meatheads are preparing an ambush.",
-            forceMeleeAttack = true
+            forceMeleeAttack = true,
+            playerWeaponRule = playerKatanaOnly,
         },
         {
             name = "Wave 4 - Cowboys Club",
@@ -362,10 +403,10 @@ return function(CharacterTDBID)
             startMessage = "These Hunters are smarter, in some way."
         },
         {
-            name = "Wave 8 - Samurais Club",
+            name = "Wave 8 - Ninjitsu Club",
             club = "SAMURAIS CLUB",
             count = 8,
-            startMessage = "SAMURAIS CLUB: THE BLADE KNOWS NO FEAR, DO YOU, V?",
+            startMessage = "NINJITSU CLUB: COME TO US, IF YOU DARE.",
             npcs = {
                 C("arasaka_2020agent_fmelee2_katana_ma"),
                 C("arasaka_2020agent_fmelee2_katana_wa"),
@@ -393,17 +434,38 @@ return function(CharacterTDBID)
             optionGroups = { "actLikeNinja" },
             holdUntilPlayerDistance = 3.0,
             disablePostSpawnCorrection = true,
-            --playerWeaponRule = {
-            --    type = "katanaOnly",
-            --    katanaItem = "Items.Preset_Katana_Wakako",
-            --    blockQuickhacks = true,
-            --    quickhackImmunityStat = "QuickHackImmunity",
-            --    requireKatanaHitForDefeat = true,
-            --    violationAction = "restartWave",
-            --    startMessage = "Katana only for this contract. Quickhacks are blocked.",
-            --    warningMessage = "Katana only for this contract. Quickhacks are blocked.",
-            --    violationMessage = "Katana only. Restarting wave."
-            --},
+            playerWeaponRule = {
+                type = "katanaOnly",
+                katanaItem = "Items.Preset_Katana_Wakako",
+                blockQuickhacks = true,
+                quickhackImmunityStat = "QuickHackImmunity",
+                requireKatanaHitForDefeat = true,
+                violationAction = "restartWave",
+                startMessage = "Katana only for this contract. Quickhacks are blocked.",
+                warningMessage = "Katana only for this contract. Quickhacks are blocked.",
+                violationMessage = "Katana only. Restarting wave."
+            },
+        },
+        {
+            name = "Wave 9 - Samurais Club",
+            club = "SAMURAIS CLUB",
+            count = 9,
+            startMessage = "SAMURAIS CLUB: THE BLADE KNOWS NO FEAR, DO YOU, V?",
+            npcs = {
+                C("dtn_tyger_claws_martial_fmelee2_katana_ma_rare"),
+            },
+            spawnPoints = {
+                { x = -1102.7472, y = 1360.4847, z = 6.0660477, w = 1 },
+                { x = -1103.1733, y = 1383.4355, z = 5.8303986, w = 1 },
+                { x = -1109.3539, y = 1401.062, z = 5.4873886, w = 1 },
+                { x = -1099.8566, y = 1406.1658, z = 5.4361115, w = 1 }
+            },
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 32500 },
+             optionGroups = { "actLikeSamurai" },
+            disablePostSpawnCorrection = true,
+            playerWeaponRule = playerKatanaOnly,
         }
     }
 

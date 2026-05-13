@@ -1219,7 +1219,9 @@ function Spawner:checkSpawnTimeouts()
                     tostring(meta.spawnIndex)
                 )
             else
-                self:requeueFallbackSpawn(meta, "hash spawn timeout")
+                if not self:requeueFallbackSpawn(meta, "hash spawn timeout") then
+                    self:requeueSameSpawn(meta, "hash spawn timeout")
+                end
             end
         end
     end
@@ -1245,7 +1247,9 @@ function Spawner:checkSpawnTimeouts()
                     tostring(meta.spawnIndex)
                 )
             else
-                self:requeueFallbackSpawn(meta, "no-hash spawn timeout")
+                if not self:requeueFallbackSpawn(meta, "no-hash spawn timeout") then
+                    self:requeueSameSpawn(meta, "no-hash spawn timeout")
+                end
             end
         end
     end

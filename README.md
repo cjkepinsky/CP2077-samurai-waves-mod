@@ -6,7 +6,7 @@ Waves is a Cyberpunk 2077 mod built on Cyber Engine Tweaks. It adds a sequence o
 
 The mod is built around authored wave locations. Each wave can define its own NPC records, spawn line or spawn points, marker position, search behavior, spawn retries, and reward.
 
-Current version: `0.9.14`. `Waves.log` includes the version in its log prefix, for example `[Waves v0.9.14]`, so bug reports can always be tied to a specific build.
+Current version: `0.9.16`. `Waves.log` includes the version in its log prefix, for example `[Waves v0.9.16]`, so bug reports can always be tied to a specific build.
 
 ### Requirements
 
@@ -148,7 +148,7 @@ Waves to mod do Cyberpunk 2077 oparty o Cyber Engine Tweaks. Dodaje sekwencję f
 
 Mod jest zbudowany wokół ręcznie ustawianych fal. Każda fala może mieć własne rekordy NPC, linię albo punkty spawnu, pozycję markera, zachowanie szukania gracza, retry spawnu i nagrodę.
 
-Aktualna wersja: `0.9.14`. `Waves.log` zawiera wersję w prefixie logu, np. `[Waves v0.9.14]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
+Aktualna wersja: `0.9.16`. `Waves.log` zawiera wersję w prefixie logu, np. `[Waves v0.9.16]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
 
 ### Wymagania
 

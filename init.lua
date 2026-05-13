@@ -1,5 +1,5 @@
 local MOD_NAME = "Waves"
-local MOD_VERSION = "0.9.14"
+local MOD_VERSION = "0.9.16"
 local MOD_LOG_NAME = MOD_NAME .. " v" .. MOD_VERSION
 
 print("[" .. MOD_LOG_NAME .. "] file loaded")

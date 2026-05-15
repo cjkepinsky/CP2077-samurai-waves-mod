@@ -6,6 +6,8 @@ The search settings split NPC behavior into three ranges: slow investigation tow
 
 Set `POST_SPAWN_TELEPORT_CORRECTION_ENABLED = false` to disable all post-spawn teleport corrections while testing authored spawn locations. This does not disable despawn cleanup.
 
+`SPAWN_REQUEST_MAX_DISTANCE` delays actual NPC spawn requests until the player is close enough to each configured spawn point. This prevents the game from accepting a spawn request in an unloaded area and returning zero spawned objects.
+
 Invitation settings live in `settings.lua`. Native SMS, shard, or quest content should set `INVITATION_ACCEPTED_FACT` to `1`; the CET runtime polls that fact with `INVITATION_FACT_POLL_INTERVAL` and starts the mission from wave 1.
 
 `waves.lua` contains gameplay data only:
@@ -19,8 +21,12 @@ Reusable option groups live near the top of `waves.lua` in `optionGroups`. A wav
 
 Useful wave fields:
 
+- `name`: human-readable wave title only, without a hardcoded `Wave N -` prefix. The runtime displays it as `Wave <list position> - <name>`.
+- `club`: human-readable group label for the wave. Use `{club}` inside `startMessage` when the HUD text should include the group name.
+- `startMessage`: optional HUD text shown when the wave starts. Supports `{club}`, `{name}`, and `{title}` placeholders.
 - `count`: number of NPCs to request.
 - `npcs`: list of Character records to rotate through.
+- `npcWeaponPool`, `npcPrimaryWeaponPool`, or `npcWeapon`: optional primary weapon override for spawned NPCs. The runtime clones the selected `Character.*` record and swaps its primary equipment item, so you can reuse a melee NPC template with weapons such as `Items.Preset_Tomahawk_Default` or `Items.Preset_Fanged_Axe_Default`.
 - `fallbackNpc`: safer replacement record if a spawn request fails.
 - `markerPos`: explicit marker location. If omitted, the first spawn point or start of the spawn line is used.
 - `spawnPoints`: exact spawn positions.
@@ -28,6 +34,7 @@ Useful wave fields:
 - `spawnLineRows` and `spawnLineRowSpacing`: optionally stagger line spawns into multiple parallel rows to avoid capsule overlap on dense waves.
 - `extraSpawnPoint` and `extraSpawnFromIndex`: sends later spawns to one fixed point.
 - `spawnPointStartIndex` and `spawnPointEndIndex`: limits which points from `spawnPoints` are active.
+- `spawnRequestMaxDistance` or `spawnActivationDistance`: optional per-wave override for how close the player must be before a queued NPC spawn request is sent to the engine. Use `0` to disable the distance gate for a wave.
 - `humanNavmeshCheckRadius`: optional pre-spawn human navmesh lookup radius. If a point is valid, the spawn request uses that navmesh point.
 - `humanNavmeshRequired`: cancels the spawn when the pre-spawn human navmesh lookup fails. Leave this off for hand-placed waves where the engine's navmesh query rejects otherwise usable points.
 - `searchTargetHumanNavmeshCheckRadius`: optional human navmesh lookup radius for non-combat search movement targets. If omitted, search movement reuses `humanNavmeshCheckRadius`.
@@ -55,8 +62,10 @@ Useful wave fields:
 - `autoCombatDistance`, `combatJoinDistance`, `directChaseDistance`: optional per-wave overrides for combat/chase thresholds.
 - `disableAIMovement`: prevents the mod from issuing regular movement/search/chase commands for that wave. Native combat behavior can still move the NPC after combat starts.
 
-When `spawnPoints` is present, `waves.lua` prepares the wave before returning it:
+Before returning the config, `waves.lua` prepares each wave:
 
+- `name` is rebuilt from the wave's current list position, so reordering waves automatically renumbers the displayed title.
+- `startMessage` placeholders are expanded after `name` is rebuilt.
 - If `count` is omitted, it defaults to the number of spawn points.
 - If `markerPos` is omitted, it defaults to the first spawn point.
 - If `count` is higher than the number of spawn points, the runtime reuses points in order instead of stacking every extra NPC on the last point.

@@ -33,7 +33,7 @@ function Helper.loadModFile(relativePath)
 end
 
 function Helper.characterTDBID(id)
-    if string.sub(id, 1, 3) == "ma_" then
+    if string.sub(id, 1, 10) == "Character." then
         return id
     end
 

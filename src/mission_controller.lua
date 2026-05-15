@@ -86,6 +86,56 @@ function MissionController:getWaveUnknownRestartLimit(wave)
     return 0
 end
 
+function MissionController:getWaveSpawnRequestMaxDistance(wave)
+    if wave then
+        local configured = tonumber(wave.spawnRequestMaxDistance or wave.spawnActivationDistance)
+
+        if configured then
+            return configured
+        end
+    end
+
+    return tonumber(self.settings.SPAWN_REQUEST_MAX_DISTANCE)
+end
+
+function MissionController:isQueuedSpawnCloseEnough(item)
+    if not item or not item.wave then return true end
+
+    local maxDistance = self:getWaveSpawnRequestMaxDistance(item.wave)
+    if not maxDistance or maxDistance <= 0 then return true end
+
+    local player = Game.GetPlayer()
+    if not player then return false end
+
+    local pos = item.pos or self.planner:getSafeSpawnPoint(item.wave, item.spawnIndex)
+    if not pos then return true end
+
+    local distance = self.geometry.distance(player:GetWorldPosition(), pos)
+    if distance <= maxDistance then
+        return true
+    end
+
+    local logInterval = self.settings.SPAWN_DISTANCE_WAIT_LOG_INTERVAL or 5.0
+    local now = self.state.elapsed or 0
+
+    if not item.lastSpawnDistanceWaitLogAt or now - item.lastSpawnDistanceWaitLogAt >= logInterval then
+        item.lastSpawnDistanceWaitLogAt = now
+
+        self.log(
+            "Spawn request waiting for player proximity | wave=" ..
+            tostring(item.wave.name) ..
+            " | index=" ..
+            tostring(item.spawnIndex) ..
+            " | dist=" ..
+            tostring(math.floor(distance)) ..
+            " | maxDist=" ..
+            tostring(maxDistance)
+        )
+    end
+
+    return false
+end
+
 function MissionController:shouldDespawnDefeatedNPC(wave)
     return wave and wave.despawnDefeatedNPCs == true
 end
@@ -962,12 +1012,84 @@ function MissionController:registerHotkeys()
         self:debugState()
     end)
 
-    for waveIndex = 1, #self.waves do
-        local index = waveIndex
+    local registeredForceWaveHotkeys = {}
 
-        registerHotkey("WavesForceWave" .. tostring(index), "Waves - force Wave " .. tostring(index), function()
-            self:forceWave(index)
+    local function getForceWaveHotkeyIndex(wave, fallbackIndex)
+        local waveName = wave and wave.name or nil
+
+        if type(waveName) == "string" then
+            local displayIndex = string.match(waveName, "^%s*Wave%s+(%d+)")
+
+            if displayIndex then
+                return tonumber(displayIndex)
+            end
+        end
+
+        return fallbackIndex
+    end
+
+    local function getForceWaveHotkeyDescription(hotkeyIndex, wave, fallbackIndex)
+        local description = "Waves - force Wave " .. tostring(hotkeyIndex)
+        local waveName = wave and wave.name or nil
+
+        if type(waveName) == "string" then
+            local suffix = string.match(waveName, "^%s*Wave%s+%d+%s*%-%s*(.+)$")
+
+            if suffix and suffix ~= "" then
+                description = description .. " - " .. suffix
+            end
+        end
+
+        if hotkeyIndex ~= fallbackIndex then
+            description = description .. " (slot " .. tostring(fallbackIndex) .. ")"
+        end
+
+        return description
+    end
+
+    local function registerForceWaveHotkey(hotkeyIndex, waveIndex, description)
+        if not hotkeyIndex or registeredForceWaveHotkeys[hotkeyIndex] then
+            return false
+        end
+
+        registeredForceWaveHotkeys[hotkeyIndex] = true
+
+        registerHotkey("WavesForceWave" .. tostring(hotkeyIndex), description, function()
+            self:forceWave(waveIndex)
         end)
+
+        self.log(
+            "Force wave hotkey registered | id=WavesForceWave" ..
+            tostring(hotkeyIndex) ..
+            " | waveIndex=" ..
+            tostring(waveIndex)
+        )
+
+        return true
+    end
+
+    for waveIndex = 1, #self.waves do
+        local wave = self.waves[waveIndex]
+        local hotkeyIndex = getForceWaveHotkeyIndex(wave, waveIndex)
+
+        registerForceWaveHotkey(
+            hotkeyIndex,
+            waveIndex,
+            getForceWaveHotkeyDescription(hotkeyIndex, wave, waveIndex)
+        )
+    end
+
+    for waveIndex = 1, #self.waves do
+        local wave = self.waves[waveIndex]
+        local displayIndex = getForceWaveHotkeyIndex(wave, waveIndex)
+
+        if displayIndex ~= waveIndex then
+            registerForceWaveHotkey(
+                waveIndex,
+                waveIndex,
+                "Waves - force list item " .. tostring(waveIndex) .. " - " .. tostring(wave and wave.name or "unknown")
+            )
+        end
     end
 
     registerHotkey("WavesForceAggro", "Waves - force aggro all", function()
@@ -1019,18 +1141,31 @@ function MissionController:onInit()
             "SpawnRequestFinished objects extracted: " ..
             tostring(#objects) ..
             " | wave=" ..
-            tostring(meta.waveName)
+            tostring(meta.waveName) ..
+            " | index=" ..
+            tostring(meta.spawnIndex) ..
+            " | npc=" ..
+            tostring(meta.npcSpawnRecord or meta.npc or "unknown")
         )
 
         if #objects == 0 then
-            self.log("WARNING: accepted spawn result, but no spawned objects found")
+            self.log(
+                "WARNING: accepted spawn result, but no spawned objects found | wave=" ..
+                tostring(meta.waveName) ..
+                " | index=" ..
+                tostring(meta.spawnIndex) ..
+                " | npc=" ..
+                tostring(meta.npcSpawnRecord or meta.npc or "unknown")
+            )
 
             if meta.skipEmptySpawnRetries then
                 self.log(
                     "Empty spawn result retry skipped | wave=" ..
                     tostring(meta.waveName) ..
                     " | index=" ..
-                    tostring(meta.spawnIndex)
+                    tostring(meta.spawnIndex) ..
+                    " | npc=" ..
+                    tostring(meta.npcSpawnRecord or meta.npc or "unknown")
                 )
 
                 return
@@ -1076,7 +1211,8 @@ function MissionController:onUpdate(delta)
     if
         #self.state.spawnQueue > 0 and
         self.state.spawnQueueTimer >= self.settings.SPAWN_INTERVAL and
-        not self.spawner:hasPendingSpawnRequests()
+        not self.spawner:hasPendingSpawnRequests() and
+        self:isQueuedSpawnCloseEnough(self.state.spawnQueue[1])
     then
         self.state.spawnQueueTimer = 0
         local item = table.remove(self.state.spawnQueue, 1)
@@ -1086,6 +1222,8 @@ function MissionController:onUpdate(delta)
             tostring(item.wave.name) ..
             " | index=" ..
             tostring(item.spawnIndex) ..
+            " | npc=" ..
+            tostring(item.npc or "unknown") ..
             " | retry=" ..
             tostring(item.retryCount or 0) ..
             " | fallback=" ..

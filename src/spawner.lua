@@ -126,6 +126,271 @@ function Spawner:countValidNPCs()
     return count
 end
 
+function Spawner:tweakIDValue(id)
+    if not id then return nil end
+    if type(id) == "string" then return id end
+
+    local ok, result = pcall(function()
+        return id.value
+    end)
+
+    if ok and result and result ~= "" then return result end
+    return tostring(id)
+end
+
+function Spawner:makeTweakDBID(id)
+    if not id then return nil end
+    if type(id) ~= "string" then return id end
+    if not TweakDBID or not TweakDBID.new then return id end
+
+    local ok, result = pcall(function()
+        return TweakDBID.new(id)
+    end)
+
+    if ok and result then return result end
+    return id
+end
+
+function Spawner:tweakGetFlat(path)
+    if not TweakDB or not path then return nil end
+
+    local ok, result = pcall(function()
+        return TweakDB:GetFlat(path)
+    end)
+
+    if ok then return result end
+    return nil
+end
+
+function Spawner:tweakSetFlat(path, value)
+    if not TweakDB or not path then return false end
+
+    local ok, result = pcall(function()
+        return TweakDB:SetFlat(path, value)
+    end)
+
+    return ok == true and result ~= false
+end
+
+function Spawner:tweakUpdate(record)
+    if not TweakDB or not record then return false end
+
+    local ok, result = pcall(function()
+        return TweakDB:Update(record)
+    end)
+
+    return ok == true and result ~= false
+end
+
+function Spawner:tweakRecordExists(record)
+    if not TweakDB or not record then return false end
+
+    local ok, result = pcall(function()
+        return TweakDB:GetRecord(record)
+    end)
+
+    return ok == true and result ~= nil
+end
+
+function Spawner:tweakCloneRecord(record, source)
+    if not TweakDB or not record or not source then return false end
+
+    local ok, result = pcall(function()
+        return TweakDB:CloneRecord(record, source)
+    end)
+
+    if ok and result ~= false then return true end
+    return self:tweakRecordExists(record)
+end
+
+function Spawner:getWaveNPCWeapon(wave, spawnIndex)
+    if not wave then return nil end
+
+    local weapons = wave.npcWeaponPool or wave.npcPrimaryWeaponPool or wave.npcWeapons
+    if type(weapons) == "string" then return weapons end
+
+    if type(weapons) == "table" and #weapons > 0 then
+        local index = ((spawnIndex or 1) - 1) % #weapons + 1
+        return weapons[index]
+    end
+
+    return wave.npcWeapon or wave.npcPrimaryWeapon
+end
+
+function Spawner:getShortRecordName(record, prefix, maxLength)
+    local name = tostring(record or "unknown")
+
+    if prefix and string.sub(name, 1, #prefix) == prefix then
+        name = string.sub(name, #prefix + 1)
+    end
+
+    name = string.gsub(name, "[^%w_]", "_")
+
+    if maxLength and #name > maxLength then
+        name = string.sub(name, 1, maxLength)
+    end
+
+    return name
+end
+
+function Spawner:makeWeaponOverrideRecordBase(baseNPC, weaponItem, waveIndex, spawnIndex)
+    return
+        "Character.waves_weapon_w" ..
+        tostring(waveIndex or "x") ..
+        "_s" ..
+        tostring(spawnIndex or "x") ..
+        "_" ..
+        self:getShortRecordName(baseNPC, "Character.", 44) ..
+        "_" ..
+        self:getShortRecordName(weaponItem, "Items.", 32)
+end
+
+function Spawner:createNPCWithPrimaryWeaponOverride(baseNPC, weaponItem, waveIndex, spawnIndex)
+    if not baseNPC or not weaponItem then return nil end
+    if type(baseNPC) ~= "string" or string.sub(baseNPC, 1, 10) ~= "Character." then return nil end
+    if not TweakDB then return nil end
+
+    self.npcWeaponOverrideCache = self.npcWeaponOverrideCache or {}
+
+    local cacheKey =
+        tostring(baseNPC) ..
+        "|" ..
+        tostring(weaponItem) ..
+        "|" ..
+        tostring(waveIndex or "x") ..
+        "|" ..
+        tostring(spawnIndex or "x")
+
+    if self.npcWeaponOverrideCache[cacheKey] then
+        return self.npcWeaponOverrideCache[cacheKey]
+    end
+
+    local primaryEquipment = self:tweakGetFlat(baseNPC .. ".primaryEquipment")
+    local primaryEquipmentName = self:tweakIDValue(primaryEquipment)
+
+    if not primaryEquipmentName or primaryEquipmentName == "" then
+        self.log(
+            "NPC weapon override skipped: missing primary equipment | npc=" ..
+            tostring(baseNPC) ..
+            " | weapon=" ..
+            tostring(weaponItem)
+        )
+        return nil
+    end
+
+    local equipmentItems = self:tweakGetFlat(primaryEquipmentName .. ".equipmentItems")
+
+    if type(equipmentItems) ~= "table" or #equipmentItems <= 0 then
+        self.log(
+            "NPC weapon override skipped: primary equipment has no items | npc=" ..
+            tostring(baseNPC) ..
+            " | equipment=" ..
+            tostring(primaryEquipmentName)
+        )
+        return nil
+    end
+
+    local sourceEquipmentItem = self:tweakIDValue(equipmentItems[1])
+
+    if not sourceEquipmentItem or sourceEquipmentItem == "" then
+        self.log(
+            "NPC weapon override skipped: failed to read source equipment item | npc=" ..
+            tostring(baseNPC)
+        )
+        return nil
+    end
+
+    if not self:tweakGetFlat(sourceEquipmentItem .. ".item") then
+        self.log(
+            "NPC weapon override skipped: equipment item is not a direct weapon item | npc=" ..
+            tostring(baseNPC) ..
+            " | item=" ..
+            tostring(sourceEquipmentItem)
+        )
+        return nil
+    end
+
+    local recordBase = self:makeWeaponOverrideRecordBase(baseNPC, weaponItem, waveIndex, spawnIndex)
+    local overrideNPC = recordBase
+    local overrideEquipment = recordBase .. "_primaryEquipment"
+    local overrideEquipmentItem = recordBase .. "_primaryEquipmentItem"
+
+    if not self:tweakCloneRecord(overrideNPC, baseNPC) then
+        self.log(
+            "NPC weapon override failed: could not clone NPC | source=" ..
+            tostring(baseNPC) ..
+            " | clone=" ..
+            tostring(overrideNPC)
+        )
+        return nil
+    end
+
+    if not self:tweakCloneRecord(overrideEquipment, primaryEquipmentName) then
+        self.log(
+            "NPC weapon override failed: could not clone equipment group | source=" ..
+            tostring(primaryEquipmentName) ..
+            " | clone=" ..
+            tostring(overrideEquipment)
+        )
+        return nil
+    end
+
+    if not self:tweakCloneRecord(overrideEquipmentItem, sourceEquipmentItem) then
+        self.log(
+            "NPC weapon override failed: could not clone equipment item | source=" ..
+            tostring(sourceEquipmentItem) ..
+            " | clone=" ..
+            tostring(overrideEquipmentItem)
+        )
+        return nil
+    end
+
+    local weaponID = self:makeTweakDBID(weaponItem)
+    local equipmentID = self:makeTweakDBID(overrideEquipment)
+    local equipmentItemID = self:makeTweakDBID(overrideEquipmentItem)
+
+    local okItem = self:tweakSetFlat(overrideEquipmentItem .. ".item", weaponID)
+    local okGroup = self:tweakSetFlat(overrideEquipment .. ".equipmentItems", { equipmentItemID })
+    local okNPC = self:tweakSetFlat(overrideNPC .. ".primaryEquipment", equipmentID)
+
+    self:tweakUpdate(overrideEquipmentItem)
+    self:tweakUpdate(overrideEquipment)
+    self:tweakUpdate(overrideNPC)
+
+    if not okItem or not okGroup or not okNPC then
+        self.log(
+            "NPC weapon override failed: flat update failed | npc=" ..
+            tostring(baseNPC) ..
+            " | weapon=" ..
+            tostring(weaponItem) ..
+            " | itemOK=" ..
+            tostring(okItem) ..
+            " | groupOK=" ..
+            tostring(okGroup) ..
+            " | npcOK=" ..
+            tostring(okNPC)
+        )
+        return nil
+    end
+
+    self.npcWeaponOverrideCache[cacheKey] = overrideNPC
+
+    self.log(
+        "NPC weapon override prepared | wave=" ..
+        tostring(waveIndex or "unknown") ..
+        " | index=" ..
+        tostring(spawnIndex or "unknown") ..
+        " | sourceNPC=" ..
+        tostring(baseNPC) ..
+        " | overrideNPC=" ..
+        tostring(overrideNPC) ..
+        " | weapon=" ..
+        tostring(weaponItem)
+    )
+
+    return overrideNPC
+end
+
 function Spawner:setTransformPositionSafe(transform, pos)
     local vec = self.geometry.toV4(pos)
 
@@ -826,6 +1091,19 @@ function Spawner:trackSpawnedObject(obj, meta)
         tostring(self:countValidNPCs())
     )
 
+    if meta and meta.npcWeaponItem then
+        self.ai:switchToPrimaryWeapon(obj)
+
+        self.log(
+            "NPC weapon override switch-to-primary sent | wave=" ..
+            tostring(meta.waveName or "unknown") ..
+            " | index=" ..
+            tostring(meta.spawnIndex or "unknown") ..
+            " | weapon=" ..
+            tostring(meta.npcWeaponItem)
+        )
+    end
+
     self.ai:scheduleSpawnAwarenessBurst(obj)
 
     return true
@@ -1081,7 +1359,17 @@ function Spawner:requestSpawnItem(item)
     finalPos = navmeshPos
     spawnDistance = self.geometry.distance(playerPos, finalPos)
 
-    local npcTDBID = self.resolveTDBID(item.npc)
+    local npcWeaponItem = self:getWaveNPCWeapon(item.wave, item.spawnIndex)
+    local npcSpawnRecord =
+        self:createNPCWithPrimaryWeaponOverride(
+            item.npc,
+            npcWeaponItem,
+            item.waveIndex,
+            item.spawnIndex
+        ) or item.npc
+
+    local npcTDBID = self.resolveTDBID(npcSpawnRecord)
+    local npcSpawnRecordText = tostring(npcSpawnRecord)
 
     if not npcTDBID then
         self.log(
@@ -1090,7 +1378,7 @@ function Spawner:requestSpawnItem(item)
             " | index=" ..
             tostring(item.spawnIndex) ..
             " | npc=" ..
-            tostring(item.npc)
+            npcSpawnRecordText
         )
         return
     end
@@ -1115,6 +1403,8 @@ function Spawner:requestSpawnItem(item)
         tostring(item.wave.name) ..
         " | index=" ..
         tostring(item.spawnIndex) ..
+        " | npc=" ..
+        npcSpawnRecordText ..
         " | source=" ..
         tostring(transformSource) ..
         " | x=" ..
@@ -1135,6 +1425,8 @@ function Spawner:requestSpawnItem(item)
         club = item.wave.club,
         spawnIndex = item.spawnIndex,
         npc = item.npc,
+        npcSpawnRecord = npcSpawnRecord,
+        npcWeaponItem = npcWeaponItem,
         pos = finalPos,
         requestTime = self.state.elapsed,
         requestID = reqId,
@@ -1163,6 +1455,8 @@ function Spawner:requestSpawnItem(item)
                 tostring(item.wave.name) ..
                 " | index=" ..
                 tostring(item.spawnIndex) ..
+                " | npc=" ..
+                npcSpawnRecordText ..
                 " | reqHash=" ..
                 tostring(reqHash) ..
                 " | spawnDist=" ..
@@ -1176,6 +1470,8 @@ function Spawner:requestSpawnItem(item)
                 tostring(item.wave.name) ..
                 " | index=" ..
                 tostring(item.spawnIndex) ..
+                " | npc=" ..
+                npcSpawnRecordText ..
                 " | spawnDist=" ..
                 tostring(math.floor(spawnDistance))
             )
@@ -1189,6 +1485,8 @@ function Spawner:requestSpawnItem(item)
         tostring(item.wave.name) ..
         " | index=" ..
         tostring(item.spawnIndex) ..
+        " | npc=" ..
+        npcSpawnRecordText ..
         " | err=" ..
         tostring(reqId)
     )

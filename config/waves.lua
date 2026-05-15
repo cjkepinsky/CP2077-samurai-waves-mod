@@ -112,7 +112,9 @@ return function(CharacterTDBID)
             group = optionGroups[group]
         end
 
-        if type(group) ~= "table" then return end
+        if type(group) ~= "table" then
+            return
+        end
 
         for key, value in pairs(group) do
             if wave[key] == nil then
@@ -122,15 +124,78 @@ return function(CharacterTDBID)
     end
 
     local function applyOptionGroups(wave)
-        if type(wave.optionGroups) ~= "table" then return end
+        if type(wave.optionGroups) ~= "table" then
+            return
+        end
 
         for _, group in ipairs(wave.optionGroups) do
             applyOptionGroup(wave, group)
         end
     end
 
-    local function prepareWave(wave)
+    local function trim(text)
+        local trimmed = string.gsub(tostring(text or ""), "^%s*(.-)%s*$", "%1")
+        return trimmed
+    end
+
+    local function stripWaveNumberPrefix(name)
+        local title = trim(name)
+        local stripped = string.match(title, "^[Ww][Aa][Vv][Ee]%s+%d+%s*%-%s*(.+)$")
+
+        if stripped and stripped ~= "" then
+            return trim(stripped)
+        end
+
+        stripped = string.match(title, "^[Ww][Aa][Vv][Ee]%s+%d+%s+(.+)$")
+
+        if stripped and stripped ~= "" then
+            return trim(stripped)
+        end
+
+        return title
+    end
+
+    local function makeWaveName(index, title)
+        title = trim(title)
+
+        if title == "" then
+            return "Wave " .. tostring(index)
+        end
+
+        return "Wave " .. tostring(index) .. " - " .. title
+    end
+
+    local function expandWaveText(text, wave)
+        if type(text) ~= "string" then
+            return text
+        end
+
+        local values = {
+            club = wave.club or "",
+            name = wave.name or "",
+            title = wave.title or ""
+        }
+
+        return string.gsub(text, "{([%w_]+)}", function(key)
+            if values[key] ~= nil then
+                return tostring(values[key])
+            end
+
+            return "{" .. tostring(key) .. "}"
+        end)
+    end
+
+    local function prepareWave(wave, waveIndex)
         applyOptionGroups(wave)
+
+        local title = stripWaveNumberPrefix(wave.name)
+        if title == "" then
+            title = stripWaveNumberPrefix(wave.club)
+        end
+
+        wave.title = title
+        wave.name = makeWaveName(waveIndex, title)
+        wave.startMessage = expandWaveText(wave.startMessage, wave)
 
         if wave.spawnPoints and #wave.spawnPoints > 0 then
             if not wave.count then
@@ -147,17 +212,25 @@ return function(CharacterTDBID)
 
     local waves = {
         {
-            name = "Wave 1 - Crickets Club",
-            club = "CRICKETS CLUB",
+            name = "The Choppers Club",
+            club = "CHOPPERS CLUB",
             count = 20,
             npcs = {
-                C("gang_retaliation_enemies_sixthstreet_melee2_baton_wa"),
-                C("gang_retaliation_enemies_sixthstreet_menace1_fmelee2_baton_wa_rare"),
-                C("gang_retaliation_enemies_sixthstreet_melee2_baton_wa_arr_11"),
-                C("gang_retaliation_enemies_sixthstreet_menace1_fmelee2_baton_wa_rare_arr_11"),
-                C("gang_retaliation_enemies_sixthstreet_melee2_baton_wa_rcr_03"),
-                C("gang_retaliation_enemies_sixthstreet_menace1_fmelee2_baton_wa_rare_rcr_03"),
-                C("lch_animals_bouncer1_melee1_baton_mb")
+                C("valentinos_machete_hmelee3_machete_mb_elite"),
+                C("rey_valentinos_machete_hmelee3_machete_mb_elite"),
+                C("gle_valentinos_machete_hmelee3_machete_mb_elite"),
+                C("maelstrom_fast_fmelee2_machete_ma_rare"),
+                C("hil_maelstrom_fast_fmelee2_machete_ma_rare"),
+                C("dtn_generic_fast_fmelee2_machete_ma_rare"),
+                C("valentinos_machete_hmelee3_machete_mb_elite"),
+                C("maelstrom_fast_fmelee2_machete_ma_rare"),
+                --C("gang_retaliation_enemies_sixthstreet_melee2_baton_wa"),
+                --C("gang_retaliation_enemies_sixthstreet_menace1_fmelee2_baton_wa_rare"),
+                --C("gang_retaliation_enemies_sixthstreet_melee2_baton_wa_arr_11"),
+                --C("gang_retaliation_enemies_sixthstreet_menace1_fmelee2_baton_wa_rare_arr_11"),
+                --C("gang_retaliation_enemies_sixthstreet_melee2_baton_wa_rcr_03"),
+                --C("gang_retaliation_enemies_sixthstreet_menace1_fmelee2_baton_wa_rare_rcr_03"),
+                --C("lch_animals_bouncer1_melee1_baton_mb")
             },
             fallbackNpc = C("gang_retaliation_enemies_sixthstreet_melee2_baton_wa"),
             markerPos = { x = -1320.4529, y = -70.17114, z = 24.181656, w = 1 },
@@ -185,38 +258,44 @@ return function(CharacterTDBID)
             searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
             searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
-            startMessage = "Members of Crickets Club are after you!",
+            startMessage = "Members of {club} are after you!",
             forceMeleeAttack = true,
             playerWeaponRule = playerKatanaOnly,
-        },
+        }, -- choppers
         {
-            name = "Wave 2 - Baseballs Club",
-            club = "BASEBALLS CLUB",
+            name = "Hatchet Club",
+            club = "HATCHET CLUB",
+            startMessage = "{club}: STAY OUT OF ARM'S REACH.",
             count = 20,
             npcs = {
-                C("lch_animals_grunt1_melee1_baseball_mb"),
-                C("ma_wbr_jpn_07_scavenger_baseball_ma"),
-                C("nid_03_tyger_claws_biker1_melee1_baseball_ma"),
-                C("nid_tyger_claws_biker1_melee1_baseball_ma"),
-                C("rcr_sixthstreet_patrol2_melee2_baseball_wa"),
-                C("rey_valentinos_grunt1_melee1_baseball_ma"),
-                C("scavenger_grunt2_melee2_baseball_ma")
+                C("valentinos_machete_hmelee3_machete_mb_elite"),
+                C("rey_valentinos_machete_hmelee3_machete_mb_elite"),
+                C("gle_valentinos_machete_hmelee3_machete_mb_elite"),
+                C("maelstrom_fast_fmelee2_machete_ma_rare"),
+                C("hil_maelstrom_fast_fmelee2_machete_ma_rare"),
+                C("dtn_generic_fast_fmelee2_machete_ma_rare")
+            },
+            npcWeaponPool = {
+                "Items.Preset_Tomahawk_Default",
+                "Items.Preset_Fanged_Axe_Default",
+                "Items.Preset_Fanged_Axe_Neon",
+                "Items.Preset_Fanged_Axe_Military"
             },
             markerPos = { x = 145.41028, y = 1056.0579, z = 203, w = 1 },
             spawnLine = {
                 edgeA = { x = 147.142, y = 1051.0625, z = 203, w = 1 },
                 edgeB = { x = 143.67856, y = 1061.0533, z = 203, w = 1 }
             },
-            extraSpawnPoint = { x = 126.34494, y = 1102.2173, z = 203.0058, w = 1 },
-            extraSpawnFromIndex = 6,
+            spawnLineRows = 4,
+            spawnLineRowSpacing = 1.35,
             minSpawnDistance = 35.0,
             lockSpawnPosition = true,
             humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
             skipEmptySpawnRetries = skipEmptySpawnRetries,
             treasure = { rewardMoney = 12500 },
-            disableDirectChase = true,
-            alwaysSearchPlayer = true,
+            alwaysSearchPlayer = false,
             searchAroundHomeOnly = true,
+            searchPlayerRadius = 8.0,
             searchMovementType = cautiousSearchMovementType,
             searchStepDistance = cautiousSearchStepDistance,
             searchRadius = alertSearchRadius,
@@ -224,31 +303,38 @@ return function(CharacterTDBID)
             searchStopDistance = alertSearchStopDistance,
             searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
             searchAlertStatusEffects = alertSearchStatusEffects,
-            pushSpawnAway = true,
+            directChaseDistance = 6.0,
+            pushSpawnAway = false,
             disablePostSpawnCorrection = true,
-            startMessage = "THE BAT BOYS ARE COMING",
             forceMeleeAttack = true,
             playerWeaponRule = playerKatanaOnly,
-        },
+        }, -- hatchets
         {
-            name = "Wave 3 - Blacksmiths Club",
+            name = "Blacksmiths Club",
             club = "BLACKSMITHS CLUB",
-            count = 6,
+            startMessage = "Lookout! Meatheads are preparing an ambush.",
+            count = 8,
             npcs = {
                 C("animals_bouncer2_hmelee2_hammer_mba_rare"),
                 C("animals_elite2_hmelee2_hammer_mba_rare"),
                 C("animals_grunt2_hmelee2_hammer_wba_rare"),
                 C("animals_grunt2_melee2_hammer_mb"),
-                C("arasaka_sumo_hmelee2_hammer_mb_rare"),
                 C("lch_animals_elite2_hmelee2_hammer_mba_rare")
             },
             spawnPoints = {
-                { x = -1435.4368, y = 1302.5973, z = 27.074898, w = 1 }, -- przed windą
-                { x = -1419.4817, y = 1292.4565, z = 27.082397, w = 1 },
-                { x = -1452.3234, y = 1313.317, z = 119.0824, w = 1 }, -- sklep z bronią
-                { x = -1400.0416, y = 1268.4159, z = 119.064896, w = 1 },
-                { x = -1389.5636, y = 1283.7878, z = 123.0824, w = 1 }, -- obok mieszkania
-                { x = -1450.1914, y = 1276.2333, z = 23.096855, w = 1 } -- na zewnątrz
+                --{ x = -1435.4368, y = 1302.5973, z = 27.074898, w = 1 }, -- przed windą
+                --{ x = -1419.4817, y = 1292.4565, z = 27.082397, w = 1 },
+                --{ x = -1452.3234, y = 1313.317, z = 119.0824, w = 1 }, -- sklep z bronią
+                --{ x = -1400.0416, y = 1268.4159, z = 119.064896, w = 1 },
+                --{ x = -1389.5636, y = 1283.7878, z = 123.0824, w = 1 }, -- obok mieszkania
+                { x = -1450.1914, y = 1276.2333, z = 23.096855, w = 1 }, -- na zewnątrz
+                { x = -1426.5479, y = 1273.4276, z = 25.090004, w = 1 }, -- na schodach
+                { x = -1437.2012, y = 1253.9418, z = 23.082176, w = 1 }, -- za barkiem
+                { x = -1433.2853, y = 1266.7559, z = 23.090004, w = 1 }, -- przed schodami
+                { x = -1420.7039, y = 1266.945, z = 23.070534, w = 1 }, -- przy automatach
+                { x = -1403.2646, y = 1275.1786, z = 23.071297, w = 1 }, -- za rogiem
+                { x = -1369.2368, y = 1257.5903, z = 24.02887, w = 1 }, -- przy parkingu
+                { x = -1450.492, y = 1286.0475, z = 23.096848, w = 1 } -- po drugiej stronie schodów
 
             },
             --spawnLine = {
@@ -270,143 +356,14 @@ return function(CharacterTDBID)
             searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
             searchAlertStatusEffects = alertSearchStatusEffects,
             disablePostSpawnCorrection = true,
-            startMessage = "Lookout! Meatheads are preparing an ambush.",
             forceMeleeAttack = true,
             playerWeaponRule = playerKatanaOnly,
-        },
+        }, -- meatheads
         {
-            name = "Wave 4 - Cowboys Club",
-            club = "COWBOYS CLUB",
-            count = 20,
-            npcs = {
-                C("valentinos_grunt2_ranged2_overture_ma"),
-                C("valentinos_grunt2_ranged2_overture_wa"),
-                C("wraiths_warrior3_ranged3_quasar_wa_rare"),
-                C("animals_elite2_ranged3_burya_mba_rare")
-            },
-            fallbackNpc = C("valentinos_grunt2_ranged2_overture_ma"),
-            spawnLine = {
-                edgeA = { x = -1774.4138, y = -526.65784, z = 10.144997, w = 1 },
-                edgeB = { x = -1760.3121, y = -510.6125, z = 10.144997, w = 1 }
-            },
-            lockSpawnPosition = true,
-            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
-            skipEmptySpawnRetries = skipEmptySpawnRetries,
-            treasure = { rewardMoney = 17500 },
-            disableDirectChase = true,
-            alwaysSearchPlayer = true,
-            searchAroundHomeOnly = true,
-            searchMovementType = cautiousSearchMovementType,
-            searchStepDistance = cautiousSearchStepDistance,
-            searchRadius = alertSearchRadius,
-            searchLeashDistance = alertSearchLeashDistance,
-            searchStopDistance = alertSearchStopDistance,
-            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
-            searchAlertStatusEffects = alertSearchStatusEffects,
-            disablePostSpawnCorrection = true,
-            startMessage = "Few Cowboys Club members are angry at you!"
-        },
-        {
-            name = "Wave 5 - Power People Club",
-            club = "POWER PEOPLE CLUB",
-            count = 20,
-            npcs = {
-                C("arasaka_agent_fshotgun2_tactician_ma_rare"),
-                C("maelstom_strong_shotgun2_carnage_ma_rare"),
-                C("arasaka_agent_fshotgun2_tactician_ma_rare"),
-                C("maelstom_strong_shotgun2_carnage_ma_rare"),
-                C("maelstom_strong_shotgun2_carnage_ma_rare")
-            },
-            fallbackNpc = C("maelstom_strong_shotgun2_carnage_ma_rare"),
-            spawnLine = {
-                -- edgeA = { x = -2261.3809, y = -2569.421, z = 25.301064, w = 1 },
-                -- edgeB = { x = -2238.669, y = -2575.5227, z = 25.30812, w = 1 }
-                edgeA = { x = -1896.2085, y = -2646.9531, z = 39.773796, w = 1 },
-                edgeB = { x = -1897.711, y = -2638.749, z = 39.53881, w = 1 }
-            },
-            lockSpawnPosition = true,
-            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
-            skipEmptySpawnRetries = skipEmptySpawnRetries,
-            treasure = { rewardMoney = 20000 },
-            disableDirectChase = true,
-            alwaysSearchPlayer = true,
-            searchAroundHomeOnly = true,
-            searchMovementType = cautiousSearchMovementType,
-            searchStepDistance = cautiousSearchStepDistance,
-            searchRadius = alertSearchRadius,
-            searchLeashDistance = alertSearchLeashDistance,
-            searchStopDistance = alertSearchStopDistance,
-            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
-            searchAlertStatusEffects = alertSearchStatusEffects,
-            disablePostSpawnCorrection = true,
-            startMessage = "Wake up! Power People Club members got enough ammo to shoot you."
-        },
-        {
-            name = "Wave 6 - Hunters Club",
-            club = "HUNTERS CLUB",
-            count = 20,
-            npcs = {
-                C("cpz_maelstrom_grunt1_ranged1_lexington_wa")
-            },
-            spawnLine = {
-                edgeA = { x = -1078.7885, y = -1528.4915, z = 25.779922, w = 1 },
-                edgeB = { x = -1102.7998, y = -1514.9469, z = 25.779922, w = 1 }
-            },
-            lockSpawnPosition = true,
-            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
-            skipEmptySpawnRetries = skipEmptySpawnRetries,
-            treasure = { rewardMoney = 22500 },
-            disableDirectChase = true,
-            alwaysSearchPlayer = true,
-            searchAroundHomeOnly = true,
-            searchMovementType = cautiousSearchMovementType,
-            searchStepDistance = cautiousSearchStepDistance,
-            searchRadius = alertSearchRadius,
-            searchLeashDistance = alertSearchLeashDistance,
-            searchStopDistance = alertSearchStopDistance,
-            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
-            searchAlertStatusEffects = alertSearchStatusEffects,
-            disablePostSpawnCorrection = true,
-            startMessage = "Hunters Club: Hunting season has begun, and you are the prey."
-        },
-        {
-            name = "Wave 7 - Smart Hunters Club",
-            club = "SMART HUNTERS CLUB",
-            count = 14,
-            npcs = {
-                C("jpn_tyger_claws_gangster3_ranged3_sidewinder_ma"),
-                C("kab_tyger_claws_gangster3_ranged3_sidewinder_ma"),
-                C("ma_corpo_Sidewinder_Auto_Smart_Rifle_Base"),
-                C("ma_gang_Sidewinder_Auto_Smart_Rifle_Base"),
-                C("ma_gang_Chao_Burst_Smart_Handgun_Base")
-            },
-            fallbackNpc = C("jpn_tyger_claws_gangster3_ranged3_sidewinder_ma"),
-            spawnLine = {
-                edgeA = { x = -1612.4158, y = -1220.4342, z = 24.694534, w = 1 },
-                edgeB = { x = -1603.7832, y = -1209.8744, z = 24.805511, w = 1 }
-            },
-            lockSpawnPosition = true,
-            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
-            skipEmptySpawnRetries = skipEmptySpawnRetries,
-            treasure = { rewardMoney = 25000 },
-            disableDirectChase = true,
-            alwaysSearchPlayer = true,
-            searchAroundHomeOnly = true,
-            searchMovementType = cautiousSearchMovementType,
-            searchStepDistance = cautiousSearchStepDistance,
-            searchRadius = alertSearchRadius,
-            searchLeashDistance = alertSearchLeashDistance,
-            searchStopDistance = alertSearchStopDistance,
-            searchAlwaysUseStealth = alertSearchAlwaysUseStealth,
-            searchAlertStatusEffects = alertSearchStatusEffects,
-            disablePostSpawnCorrection = true,
-            startMessage = "These Hunters are smarter, in some way."
-        },
-        {
-            name = "Wave 8 - Ninjitsu Club",
-            club = "SAMURAIS CLUB",
+            name = "Ninjitsu Club",
+            club = "NINJITSU CLUB",
             count = 8,
-            startMessage = "NINJITSU CLUB: COME TO US, IF YOU DARE.",
+            startMessage = "{club}: COME TO US, IF YOU DARE.",
             npcs = {
                 C("arasaka_2020agent_fmelee2_katana_ma"),
                 C("arasaka_2020agent_fmelee2_katana_wa"),
@@ -430,27 +387,17 @@ return function(CharacterTDBID)
             lockSpawnPosition = true,
             humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
             skipEmptySpawnRetries = skipEmptySpawnRetries,
-            treasure = { rewardMoney = 30000 },
+            treasure = { rewardMoney = 17500 },
             optionGroups = { "actLikeNinja" },
             holdUntilPlayerDistance = 3.0,
             disablePostSpawnCorrection = true,
-            playerWeaponRule = {
-                type = "katanaOnly",
-                katanaItem = "Items.Preset_Katana_Wakako",
-                blockQuickhacks = true,
-                quickhackImmunityStat = "QuickHackImmunity",
-                requireKatanaHitForDefeat = true,
-                violationAction = "restartWave",
-                startMessage = "Katana only for this contract. Quickhacks are blocked.",
-                warningMessage = "Katana only for this contract. Quickhacks are blocked.",
-                violationMessage = "Katana only. Restarting wave."
-            },
-        },
+            playerWeaponRule = playerKatanaOnly,
+        }, -- ninjitsu
         {
-            name = "Wave 9 - Samurais Club",
+            name = "Samurais Club",
             club = "SAMURAIS CLUB",
             count = 9,
-            startMessage = "SAMURAIS CLUB: THE BLADE KNOWS NO FEAR, DO YOU, V?",
+            startMessage = "{club}: THE BLADE KNOWS NO FEAR, DO YOU, V?",
             npcs = {
                 C("dtn_tyger_claws_martial_fmelee2_katana_ma_rare"),
             },
@@ -462,15 +409,113 @@ return function(CharacterTDBID)
             },
             humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
             skipEmptySpawnRetries = skipEmptySpawnRetries,
-            treasure = { rewardMoney = 32500 },
-             optionGroups = { "actLikeSamurai" },
+            treasure = { rewardMoney = 20000 },
+            optionGroups = { "actLikeSamurai" },
             disablePostSpawnCorrection = true,
             playerWeaponRule = playerKatanaOnly,
-        }
+        }, -- samurais
+        {
+            name = "MaxTac Triad",
+            club = "MAXTAC TRIAD",
+            count = 3,
+            startMessage = "{club}: STAND STILL. IT WILL BE OVER FASTER.",
+            npcs = {
+                C("maxtac_melee_ma_elite"),
+                C("maxtac_av_mantis_wa_2nd_wave"),
+            },
+            spawnPoints = {
+                { x = -879.2412, y = 1447.5039, z = 5.8099976, w = 1 },
+                { x = -837.3224, y = 1463.671, z = 5.8099976, w = 1 },
+                { x = -830.7426, y = 1430.34, z = 5.8099976, w = 1 }
+            },
+            lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 45000 },
+            optionGroups = { "actLikeNinja" },
+            holdUntilPlayerDistance = 4.0,
+            disablePostSpawnCorrection = true,
+            forceMeleeAttack = true,
+            playerWeaponRule = playerKatanaOnly,
+        }, -- MaxTac Triad
+        {
+            name = "Arasaka Four Blades",
+            club = "ARASAKA FOUR BLADES",
+            count = 4,
+            startMessage = "{club}: KNEEL, V. THE FOUR BLADES ARRIVED.",
+            npcs = {
+                C("arasaka_ninja_fmelee3_mantis_ma_elite"),
+                C("arasaka_ninja_fmelee3_mantis_ma_elite"),
+                C("arasaka_2020agent_fmelee2_katana_ma"),
+                C("arasaka_2020agent_fmelee2_katana_wa")
+            },
+            spawnPoints = {
+                { x = -2001.0929, y = -1136.2089, z = 10.675056, w = 1 },
+                { x = -2005.1034, y = -1190.5255, z = 10.629303, w = 1 },
+                { x = -2024.1633, y = -1124.6962, z = 10.675056, w = 1 },
+                { x = -2045.2645, y = -1140.9893, z = 21.053452, w = 1 }
+            },
+            lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 22500 },
+            optionGroups = { "actLikeNinja" },
+            holdUntilPlayerDistance = 5.0,
+            disablePostSpawnCorrection = true,
+            forceMeleeAttack = true,
+            playerWeaponRule = playerKatanaOnly,
+        }, -- Arasaka Four Blades
+        {
+            name = "2 + 1",
+            club = "2 + 1",
+            count = 3,
+            startMessage = "{club}: CYBERPSYCHO PROTOCOL NOW APPLIES TO YOU, V.",
+            npcs = {
+                C("Cyberninja_Oda"),
+                C("main_boss_oda"),
+                C("rcr_05_cyberpsycho") -- babka z żyletą
+            },
+            spawnPoints = {
+                --{ x = -2224.8757, y = -1019.25134, z = 40.574234, w = 1 }, -- balkonik
+                { x = -2215.1501, y = -993.78656, z = 40.100006, w = 1 }, -- krawędź
+                { x = -2215.864, y = -986.3336, z = 40.100006, w = 1 },
+                { x = -2215.2727, y = -972.36444, z = 40.100006, w = 1 }
+            },
+            lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 25000 },
+            --optionGroups = { "actLikeNinja" },
+            holdUntilPlayerDistance = 5.0,
+            disablePostSpawnCorrection = true,
+            forceMeleeAttack = true,
+            playerWeaponRule = playerKatanaOnly,
+        }, -- 2 + 1
+        {
+            name = "new",
+            club = "new",
+            count = 1,
+            startMessage = "{club}: CYBERPSYCHO PROTOCOL NOW APPLIES TO YOU, V.",
+            npcs = {
+                C("ma_std_rcr_11_cyberpsycho")
+            },
+            spawnPoints = {
+                { x = 92.33603, y = -64.45105, z = 7.0258713, w = 1 }
+            },
+            lockSpawnPosition = true,
+            humanNavmeshCheckRadius = stableHumanNavmeshCheckRadius,
+            skipEmptySpawnRetries = skipEmptySpawnRetries,
+            treasure = { rewardMoney = 22500 },
+            --optionGroups = { "actLikeNinja" },
+            holdUntilPlayerDistance = 15.0,
+            disablePostSpawnCorrection = true,
+            forceMeleeAttack = true,
+            playerWeaponRule = playerKatanaOnly,
+        },
     }
 
-    for _, wave in ipairs(waves) do
-        prepareWave(wave)
+    for waveIndex, wave in ipairs(waves) do
+        prepareWave(wave, waveIndex)
     end
 
     return {

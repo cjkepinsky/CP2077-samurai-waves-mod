@@ -1,4 +1,5 @@
 StaticShooters.log
+StaticShooters.*.log
 Waves.log
 db.sqlite3
 .idea/

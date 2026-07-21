@@ -514,6 +514,48 @@ return function(CharacterTDBID)
         },
     }
 
+--     x = 2564.4065, y = -36.28605, z = 80.81503, w = 1 } -- bar przy rocky ridge, badlands
+    -- { x = 5138.684, y = -616.8569, z = 144.49898, w = 1 } -- wiatraki na badlandach
+    -- { x = 473.20978, y = 1310.459, z = 230.65866, w = 1 } -- posiadłość arasaki
+    -- { x = -1507.7677, y = 3073.6348, z = 20.124496, w = 1 } -- kontenerowiec maelstrom w dokach
+    -- { x = -1536.8926, y = 2510.5671, z = 7.1184006, w = 1 } -- miejsce rytuału
+    -- { x = -2200.7207, y = 2026.8107, z = 18, w = 1 } -- pod bud arasaki w Watson
+    -- { x = -1658.9292, y = 2026.5867, z = 18.128922, w = 1 } - fabryka tigersów, watson
+    -- { x = -1538.4487, y = 1197.2526, z = 57.000008, w = 1 } -- dach obok Viktora
+    -- { x = -1545.5684, y = 1269.5448, z = 31.0672, w = 1 } - niższy dach obok Viktora
+    -- { x = 438.26346, y = -1658.2573, z = 9.433899, w = 1 } -- pod młyńkim kołem, Santo Domingo
+    -- { x = 328.19818, y = -1628.1072, z = 9.2966, w = 1 } -- restauracja, Santo Domingo
+    -- { x = 626.80676, y = -2208.5515, z = 42.735657, w = 1 } -- dach przy petrochemie, santo domingo
+    -- { x = -634.9795, y = 928.32837, z = 24.019714, w = 1 } -- między stopami posągu, jig jig street, kabuki
+    -- { x = -689.55, y = 919.65173, z = 11.400002, w = 1 } -- kagami market, jig jig
+    -- { x = -1178.0944, y = 335.4732, z = 4.68412, w = 1 } -- centrum, teren pod neonami
+    -- { x = -1373.2892, y = -85.60083, z = 37.16487, w = 1 } -- alejka pod rybami, centrum
+    -- { x = -1319.163, y = 164.07602, z = 6.868477, w = 1 } -- behavioral health center, centrum
+    -- { x = -1945.6273, y = -2395.3657, z = 36.31846, w = 1 } -- dogtown, koło bramy
+    -- { x = -2748.892, y = -1841.1753, z = 0.34627533, w = 1 } -- mini plaża przy dabelskim młynie, pacifica
+    -- { x = -2563.2622, y = -2348.3555, z = 12.590836, w = 1 } -- dach przy diabelskim młynie, pacifica
+    -- { x = -1186.0554, y = 1775.9146, z = 27.481201, w = 1 } -- mieszkanie w kennedy north, kabuki
+    -- { x = -1179.5623, y = 1738.3096, z = 19.388016, w = 1 } -- piwnica w mieszkaniu obok, kabuki
+    -- { x = -1163.3229, y = 1741.2615, z = 23.37053, w = 1 } -- garaż obok piwnicy
+-- { x = -1185.7792, y = 1762.3317, z = 23.37053, w = 1 } -- lryjówka pod schodami kawałek dalej
+     -- { x = -1198.2233, y = 1765.8457, z = 35.441467, w = 1 } -- dach obok balkonu, kabuki
+    -- { x = -1093.0969, y = 1604.2952, z = 0.1482315, w = 1 } -- na przeciwko pierogarni
+    -- { x = -1115.9191, y = 1761.162, z = 10.82708, w = 1 } -- kanał obok tańczącego robota, kabuki
+    -- { x = -807.7446, y = 1819.858, z = 25.359825, w = 1 } -- przy spływie kanału, kabuki
+    -- { x = -825.9462, y = 1972.3687, z = 52.261734, w = 1 } -- uszkodzona droga kabuki
+    -- { x = -92.58072, y = 1942.8658, z = 100.632, w = 1 } -- kino samochodowe
+    -- { x = -2700.9246, y = -1681.6901, z = -26.740189, w = 1 } -- tunel pod wodą, pacifika
+    -- { x = -807.7224, y = -1811.4795, z = 8.387482, w = 1 } -- pod wiaduktem, santo domingo
+    -- { x = -270.12485, y = -1393.4128, z = 8.6315155, w = 1 } - magazyn arasaki, przy głowie wilka, santo d.
+    -- { x = -852.04614, y = -508.6143, z = 39.527367, w = 1 } -- na neonowym dachu kolejki, center
+    -- { x = -1294.3577, y = -404.96692, z = 7.4085693, w = 1 } -- między blokami, wejście przez ogrodzenie 2 pasmówki, przy memorial park, center
+    -- { x = -1514.1046, y = -413.1055, z = 7.4085693, w = 1 } -- przy przebranych glinach, przy memorial park, center
+
+
+
+
+
+
     for waveIndex, wave in ipairs(waves) do
         prepareWave(wave, waveIndex)
     end

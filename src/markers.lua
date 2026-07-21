@@ -327,7 +327,7 @@ function Markers:setWaveMarker(waveIndex)
         self.state.markerActive = markerOk == true
         self.state.markerRouteReady = routeOk == true
         self.state.markerTriggerActive =
-            routeOk == true and
+            markerOk == true and
             not (self.state.currentWaveIndex and self.state.currentWaveIndex > 0)
 
         self.log(
@@ -352,14 +352,14 @@ function Markers:setWaveMarker(waveIndex)
         )
         if markerOk and not routeOk then
             self.log(
-                "Wave marker route not ready; pending retry | wave=" ..
+                "Wave marker route not ready; marker trigger remains active | wave=" ..
                 tostring(waveIndex) ..
                 " | routeCarrier=" ..
                 tostring(routeCarrier)
             )
         end
 
-        return markerOk and routeOk
+        return markerOk
     end
 
     self.log("Wave marker FAILED | wave=" .. tostring(waveIndex) .. " | err=" .. tostring(err))

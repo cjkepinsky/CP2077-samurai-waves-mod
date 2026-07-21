@@ -1,5 +1,5 @@
 local MOD_NAME = "Samurai Waves"
-local MOD_VERSION = "0.9.22"
+local MOD_VERSION = "0.9.23"
 local MOD_LOG_NAME = MOD_NAME .. " v" .. MOD_VERSION
 local MOD_LOG_FILE = "SamuraiWaves.log"
 

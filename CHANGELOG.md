@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.23
+
+- Fixed wave markers that were visible but did not start the wave when Cyberpunk refused GPS route tracking.
+- This fixes the wave 4 case where the marker could be reached but no NPCs spawned because `routeOk=false` kept the marker trigger disabled.
+
 ## 0.9.22
 
 - Renamed the runtime mod to `Samurai Waves`.

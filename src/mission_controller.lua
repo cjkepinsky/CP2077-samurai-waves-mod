@@ -693,7 +693,7 @@ end
 function MissionController:updatePendingWaveMarker(delta)
     if not self.state.missionActive then return end
     if self.state.currentWaveIndex > 0 then return end
-    if self.state.markerActive and self.state.markerRouteReady then return end
+    if self.state.markerActive and self.state.currentMarkerWaveIndex ~= nil then return end
 
     if not self.state.pendingMarkerWaveIndex and self.state.highestWaveStarted < #self.waves then
         self.state.pendingMarkerWaveIndex = self.state.highestWaveStarted + 1

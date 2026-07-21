@@ -4,9 +4,11 @@
 
 Samurai Waves is a Cyberpunk 2077 mod built on Cyber Engine Tweaks. It adds a sequence of enemy waves, map/GPS navigation between locations, guarded stash rewards, and debug hotkeys for testing encounters.
 
+The current encounter chain is katana-only: non-katana weapons are removed from active weapon slots during waves, quickhacks are blocked against tracked enemies, and breaking the rule can restart the wave.
+
 The mod is built around authored wave locations. Each wave can define its own NPC records, spawn line or spawn points, marker position, search behavior, spawn retries, and reward.
 
-Current version: `0.9.22`. `SamuraiWaves.log` includes the version in its log prefix, for example `[Samurai Waves v0.9.22]`, so bug reports can always be tied to a specific build.
+Current version: `0.9.23`. `SamuraiWaves.log` includes the version in its log prefix, for example `[Samurai Waves v0.9.23]`, so bug reports can always be tied to a specific build.
 
 ### Requirements
 
@@ -24,7 +26,7 @@ Tested locally with Cyberpunk 2077 `2.31` and Cyber Engine Tweaks `1.37.1`.
 
 #### Release ZIP
 
-1. Download `SamuraiWaves-v0.9.22.zip`.
+1. Download `SamuraiWaves-v0.9.23.zip`.
 2. Extract it into the Cyberpunk 2077 game folder, the folder that contains `bin/`.
 3. Confirm that the extracted files end up here:
 
@@ -64,7 +66,7 @@ The runtime log is written to `SamuraiWaves.log` in the mod folder.
 After a successful load, `SamuraiWaves.log` should contain lines like:
 
 ```text
-[Samurai Waves v0.9.22] Loaded
+[Samurai Waves v0.9.23] Loaded
 Starting mission | source=auto-start
 Wave marker registered | wave=1
 ```
@@ -143,7 +145,7 @@ Check that the active folder is exactly `mods/SamuraiWaves/` and that `init.lua`
 
 - No `Loaded` line means CET did not load the mod folder.
 - `Loaded` without `Starting mission` usually means the save has not reached gameplay yet, or `AUTO_START_ENABLED` is disabled.
-- `Wave marker route not ready; pending retry` means the mod is retrying route activation. Open the full map once, close it, and wait a few seconds.
+- `Wave marker route not ready; marker trigger remains active` means the map marker can still start the wave, but the game did not accept the GPS route yet. Open the full map once, close it, and wait a few seconds if you also need the route.
 
 If you previously installed `Waves` or `StaticShooters`, make sure those folders are removed or their `init.lua` files are disabled.
 
@@ -199,9 +201,11 @@ Samurai Waves' original code and documentation are available under the MIT Licen
 
 Samurai Waves to mod do Cyberpunk 2077 oparty o Cyber Engine Tweaks. Dodaje sekwencję fal przeciwników, markery mapy, prowadzenie GPS między lokacjami, nagrody za pilnowane skrytki oraz hotkeye debugowe do testowania starć.
 
+Aktualny łańcuch starć jest katana-only: podczas fal bronie inne niż katany są usuwane z aktywnych slotów, quickhacki na śledzonych przeciwnikach są blokowane, a złamanie tej zasady może zrestartować falę.
+
 Mod jest zbudowany wokół ręcznie ustawianych fal. Każda fala może mieć własne rekordy NPC, linię albo punkty spawnu, pozycję markera, zachowanie szukania gracza, retry spawnu i nagrodę.
 
-Aktualna wersja: `0.9.22`. `SamuraiWaves.log` zawiera wersję w prefixie logu, np. `[Samurai Waves v0.9.22]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
+Aktualna wersja: `0.9.23`. `SamuraiWaves.log` zawiera wersję w prefixie logu, np. `[Samurai Waves v0.9.23]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
 
 ### Wymagania
 
@@ -219,7 +223,7 @@ Lokalnie przetestowane z Cyberpunk 2077 `2.31` i Cyber Engine Tweaks `1.37.1`.
 
 #### ZIP Release
 
-1. Pobierz `SamuraiWaves-v0.9.22.zip`.
+1. Pobierz `SamuraiWaves-v0.9.23.zip`.
 2. Wypakuj go do folderu gry Cyberpunk 2077, czyli folderu zawierającego `bin/`.
 3. Upewnij się, że pliki trafiły tutaj:
 
@@ -259,7 +263,7 @@ Log działania moda zapisuje się w pliku `SamuraiWaves.log` w folderze moda.
 Po poprawnym załadowaniu `SamuraiWaves.log` powinien zawierać linie podobne do:
 
 ```text
-[Samurai Waves v0.9.22] Loaded
+[Samurai Waves v0.9.23] Loaded
 Starting mission | source=auto-start
 Wave marker registered | wave=1
 ```
@@ -338,7 +342,7 @@ Sprawdź, czy aktywny folder ma dokładnie ścieżkę `mods/SamuraiWaves/` i czy
 
 - Brak linii `Loaded` oznacza, że CET nie załadował folderu moda.
 - `Loaded` bez `Starting mission` zwykle oznacza, że save nie doszedł jeszcze do rozgrywki albo `AUTO_START_ENABLED` jest wyłączone.
-- `Wave marker route not ready; pending retry` oznacza, że mod ponawia aktywację trasy. Otwórz dużą mapę raz, zamknij ją i poczekaj kilka sekund.
+- `Wave marker route not ready; marker trigger remains active` oznacza, że marker nadal może uruchomić falę, ale gra nie przyjęła jeszcze trasy GPS. Otwórz dużą mapę raz, zamknij ją i poczekaj kilka sekund, jeśli potrzebujesz też trasy.
 
 Jeśli wcześniej instalowałeś `Waves` albo `StaticShooters`, upewnij się, że te foldery są usunięte albo ich pliki `init.lua` są wyłączone.
 

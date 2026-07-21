@@ -191,6 +191,10 @@ For a fresh install, use a folder named `SamuraiWaves` under CET's `mods` direct
 
 The default repository branch is `master`.
 
+### License
+
+Samurai Waves' original code and documentation are available under the MIT License. This does not grant rights to Cyberpunk 2077, Cyber Engine Tweaks, or any CD Projekt RED assets, trademarks, or intellectual property.
+
 ## Polski
 
 Samurai Waves to mod do Cyberpunk 2077 oparty o Cyber Engine Tweaks. Dodaje sekwencję fal przeciwników, markery mapy, prowadzenie GPS między lokacjami, nagrody za pilnowane skrytki oraz hotkeye debugowe do testowania starć.
@@ -381,3 +385,7 @@ Stare logi z wcześniejszych buildów można zignorować albo usunąć. Aktualna
 Przy świeżej instalacji użyj folderu `SamuraiWaves` w katalogu `mods` CET.
 
 Domyślna gałąź repozytorium to `master`.
+
+### Licencja
+
+Oryginalny kod i dokumentacja Samurai Waves są dostępne na licencji MIT. Licencja nie nadaje praw do Cyberpunk 2077, Cyber Engine Tweaks ani żadnych zasobów, znaków towarowych lub własności intelektualnej CD Projekt RED.

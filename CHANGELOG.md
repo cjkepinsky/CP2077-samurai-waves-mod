@@ -7,6 +7,7 @@
 - Added retry handling for the first wave map marker route activation.
 - Updated the runtime log file to `SamuraiWaves.log`.
 - Updated installation and troubleshooting documentation for public release.
+- Added the MIT License for the original mod code and documentation.
 - Tested locally with Cyberpunk 2077 `2.31` and Cyber Engine Tweaks `1.37.1`.
 - Release ZIPs should use the game-root layout:
 

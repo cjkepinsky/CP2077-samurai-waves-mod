@@ -18,7 +18,25 @@ Current version: `0.9.22`. `SamuraiWaves.log` includes the version in its log pr
 
 The mod does not require Redscript, ArchiveXL, TweakXL, or Native Settings UI.
 
+Tested locally with Cyberpunk 2077 `2.31` and Cyber Engine Tweaks `1.37.1`.
+
 ### Installation
+
+#### Release ZIP
+
+1. Download `SamuraiWaves-v0.9.22.zip`.
+2. Extract it into the Cyberpunk 2077 game folder, the folder that contains `bin/`.
+3. Confirm that the extracted files end up here:
+
+```text
+Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/SamuraiWaves/init.lua
+```
+
+4. If you installed an older copy of this mod under `Waves` or `StaticShooters`, remove it or disable its `init.lua` before launching the game. CET loads every folder under `mods/`, so duplicate copies can start two runtimes at once.
+5. Start the game. If the game is already running, use CET's `Reload Mods`; if the marker does not appear after a reload, fully restart the game.
+6. Load a save. By default the mod starts automatically after a short delay and places the wave 1 marker on the map.
+
+#### Manual Source Install
 
 1. Download this repository as a ZIP or clone it with Git.
 2. Create a folder named exactly `SamuraiWaves` here:
@@ -39,9 +57,7 @@ SamuraiWaves/
 
 Do not leave the files inside an extra nested folder such as `SamuraiWaves/CP2077-mod-waves-main/init.lua`.
 
-4. If you installed an older copy of this mod under `Waves` or `StaticShooters`, remove it or disable its `init.lua` before launching the game. CET loads every folder under `mods/`, so duplicate copies can start two runtimes at once.
-5. Start the game. If the game is already running, use CET's `Reload Mods`; if the marker does not appear after a reload, fully restart the game.
-6. Load a save. By default the mod starts automatically after a short delay and places the wave 1 marker on the map.
+4. Continue with steps 4-6 from the release ZIP install above.
 
 The runtime log is written to `SamuraiWaves.log` in the mod folder.
 
@@ -193,7 +209,25 @@ Aktualna wersja: `0.9.22`. `SamuraiWaves.log` zawiera wersję w prefixie logu, n
 
 Mod nie wymaga Redscript, ArchiveXL, TweakXL ani Native Settings UI.
 
+Lokalnie przetestowane z Cyberpunk 2077 `2.31` i Cyber Engine Tweaks `1.37.1`.
+
 ### Instalacja
+
+#### ZIP Release
+
+1. Pobierz `SamuraiWaves-v0.9.22.zip`.
+2. Wypakuj go do folderu gry Cyberpunk 2077, czyli folderu zawierającego `bin/`.
+3. Upewnij się, że pliki trafiły tutaj:
+
+```text
+Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/SamuraiWaves/init.lua
+```
+
+4. Jeśli masz starszą kopię tego moda pod nazwą `Waves` albo `StaticShooters`, usuń ją albo wyłącz jej `init.lua` przed uruchomieniem gry. CET ładuje każdy folder z `mods/`, więc zdublowana instalacja może uruchomić dwa runtime'y naraz.
+5. Uruchom grę. Jeśli gra już działa, użyj `Reload Mods` w CET; jeśli po reloadzie marker się nie pojawia, zrób pełny restart gry.
+6. Wczytaj save. Domyślnie mod sam startuje po krótkim opóźnieniu i ustawia marker fali 1 na mapie.
+
+#### Ręczna Instalacja Ze Źródeł
 
 1. Pobierz repozytorium jako ZIP albo sklonuj je Gitem.
 2. Utwórz folder o dokładnej nazwie `SamuraiWaves` tutaj:
@@ -214,9 +248,7 @@ SamuraiWaves/
 
 Nie zostawiaj plików w dodatkowym zagnieżdżonym folderze typu `SamuraiWaves/CP2077-mod-waves-main/init.lua`.
 
-4. Jeśli masz starszą kopię tego moda pod nazwą `Waves` albo `StaticShooters`, usuń ją albo wyłącz jej `init.lua` przed uruchomieniem gry. CET ładuje każdy folder z `mods/`, więc zdublowana instalacja może uruchomić dwa runtime'y naraz.
-5. Uruchom grę. Jeśli gra już działa, użyj `Reload Mods` w CET; jeśli po reloadzie marker się nie pojawia, zrób pełny restart gry.
-6. Wczytaj save. Domyślnie mod sam startuje po krótkim opóźnieniu i ustawia marker fali 1 na mapie.
+4. Kontynuuj od kroków 4-6 z instalacji ZIP release powyżej.
 
 Log działania moda zapisuje się w pliku `SamuraiWaves.log` w folderze moda.
 
@@ -242,7 +274,7 @@ Most zaproszenia nadal działa przez quest fact: natywny SMS, shard albo quest m
 
 Każda fala ma nagrodę skonfigurowaną w `config/waves.lua`. Nagroda jest wypłacana skryptem po wyczyszczeniu fali; to nie jest fizyczny kontener z lootem.
 
-Wybrane fale moga definiowac `playerWeaponRule`. Wbudowana regula `katanaOnly` usuwa bron niebedaca katana z aktywnych slotow broni podczas tej fali, wyposaza gracza w awaryjna katane gdy trzeba i moze zrestartowac fale, jezeli gracz zada sledzonemu NPC obrazenia czyms innym niz katana. Przy `blockQuickhacks = true` sledzeni NPC dostaja tez odpornosc na quickhacki na czas fali. Przy `requireKatanaHitForDefeat = true` NPC nie zaliczy sie jako pokonany, dopoki mod nie zobaczy na nim trafienia katana.
+Wybrane fale mogą definiować `playerWeaponRule`. Wbudowana reguła `katanaOnly` usuwa broń niebędącą kataną z aktywnych slotów broni podczas tej fali, wyposaża gracza w awaryjną katanę, gdy trzeba, i może zrestartować falę, jeżeli gracz zada śledzonemu NPC obrażenia czymś innym niż katana. Przy `blockQuickhacks = true` śledzeni NPC dostają też odporność na quickhacki na czas fali. Przy `requireKatanaHitForDefeat = true` NPC nie zaliczy się jako pokonany, dopóki mod nie zobaczy na nim trafienia kataną.
 
 ### Hotkeye
 

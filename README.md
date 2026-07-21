@@ -10,27 +10,48 @@ Current version: `0.9.22`. `SamuraiWaves.log` includes the version in its log pr
 
 ### Requirements
 
-- Cyberpunk 2077 on PC.
-- Cyber Engine Tweaks installed and working.
-- CET hotkeys are optional and only needed for debugging/testing shortcuts.
-- A save where the target areas are accessible.
+- Cyberpunk 2077 on PC, with a working manual mod installation.
+- Cyber Engine Tweaks installed in `Cyberpunk 2077/bin/x64/plugins/` and confirmed working in-game.
+- CET must have completed its first-run setup, including the overlay keybind prompt.
+- A save where the player can freely move around Night City and reach the authored wave locations.
+- For the automatic map marker, load into gameplay rather than staying in the main menu.
 
 The mod does not require Redscript, ArchiveXL, TweakXL, or Native Settings UI.
 
 ### Installation
 
-1. Download or clone this repository.
-2. Put the mod folder here:
+1. Download this repository as a ZIP or clone it with Git.
+2. Create a folder named exactly `SamuraiWaves` here:
 
 ```text
 Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/SamuraiWaves
 ```
 
-3. Make sure `init.lua`, `helper.lua`, `config/`, and `src/` are directly inside the mod folder.
-4. Start or restart the game. If the game is already running, use CET's reload mods option.
-5. Start or reload the game. By default the mod starts the mission automatically and places the wave 1 marker on the map.
+3. Copy the repository contents into that folder. The final layout must look like this:
+
+```text
+SamuraiWaves/
+  init.lua
+  helper.lua
+  config/
+  src/
+```
+
+Do not leave the files inside an extra nested folder such as `SamuraiWaves/CP2077-mod-waves-main/init.lua`.
+
+4. If you installed an older copy of this mod under `Waves` or `StaticShooters`, remove it or disable its `init.lua` before launching the game. CET loads every folder under `mods/`, so duplicate copies can start two runtimes at once.
+5. Start the game. If the game is already running, use CET's `Reload Mods`; if the marker does not appear after a reload, fully restart the game.
+6. Load a save. By default the mod starts automatically after a short delay and places the wave 1 marker on the map.
 
 The runtime log is written to `SamuraiWaves.log` in the mod folder.
+
+After a successful load, `SamuraiWaves.log` should contain lines like:
+
+```text
+[Samurai Waves v0.9.22] Loaded
+Starting mission | source=auto-start
+Wave marker registered | wave=1
+```
 
 ### How To Use
 
@@ -100,6 +121,16 @@ If you manually click another destination on the map, the game can replace the S
 
 Wait a second or two; the mod refreshes route tracking periodically. If the route still does not appear, open the full map, select the Samurai Waves marker, close the map, and move a few meters. The game sometimes needs an active route carrier before the minimap accepts the route.
 
+#### The first marker does not appear
+
+Check that the active folder is exactly `mods/SamuraiWaves/` and that `init.lua` is directly inside it. Then open `SamuraiWaves.log`.
+
+- No `Loaded` line means CET did not load the mod folder.
+- `Loaded` without `Starting mission` usually means the save has not reached gameplay yet, or `AUTO_START_ENABLED` is disabled.
+- `Wave marker route not ready; pending retry` means the mod is retrying route activation. Open the full map once, close it, and wait a few seconds.
+
+If you previously installed `Waves` or `StaticShooters`, make sure those folders are removed or their `init.lua` files are disabled.
+
 #### The marker exists, but NPCs do not appear
 
 Check `SamuraiWaves.log`. Useful lines:
@@ -154,27 +185,48 @@ Aktualna wersja: `0.9.22`. `SamuraiWaves.log` zawiera wersję w prefixie logu, n
 
 ### Wymagania
 
-- Cyberpunk 2077 na PC.
-- Zainstalowany i działający Cyber Engine Tweaks.
-- Hotkeye CET są opcjonalne i potrzebne tylko do debugowania/testowania.
-- Save, w którym docelowe obszary miasta są dostępne.
+- Cyberpunk 2077 na PC, z działającą ręczną instalacją modów.
+- Cyber Engine Tweaks zainstalowany w `Cyberpunk 2077/bin/x64/plugins/` i sprawdzony w grze.
+- CET musi mieć ukończoną pierwszą konfigurację, w tym ustawiony klawisz overlayu.
+- Save, w którym gracz może swobodnie poruszać się po Night City i dotrzeć do ręcznie ustawionych lokacji fal.
+- Automatyczny marker pojawia się dopiero po wczytaniu rozgrywki, nie w menu głównym.
 
 Mod nie wymaga Redscript, ArchiveXL, TweakXL ani Native Settings UI.
 
 ### Instalacja
 
-1. Pobierz albo sklonuj repozytorium.
-2. Umieść folder moda tutaj:
+1. Pobierz repozytorium jako ZIP albo sklonuj je Gitem.
+2. Utwórz folder o dokładnej nazwie `SamuraiWaves` tutaj:
 
 ```text
 Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/SamuraiWaves
 ```
 
-3. Upewnij się, że bezpośrednio w folderze moda są pliki `init.lua`, `helper.lua` oraz katalogi `config/` i `src/`.
-4. Uruchom albo zrestartuj grę. Jeśli gra już działa, użyj opcji reload mods w CET.
-5. Uruchom albo przeładuj grę. Domyślnie mod sam startuje misję i ustawia marker fali 1 na mapie.
+3. Skopiuj zawartość repozytorium do tego folderu. Finalny układ musi wyglądać tak:
+
+```text
+SamuraiWaves/
+  init.lua
+  helper.lua
+  config/
+  src/
+```
+
+Nie zostawiaj plików w dodatkowym zagnieżdżonym folderze typu `SamuraiWaves/CP2077-mod-waves-main/init.lua`.
+
+4. Jeśli masz starszą kopię tego moda pod nazwą `Waves` albo `StaticShooters`, usuń ją albo wyłącz jej `init.lua` przed uruchomieniem gry. CET ładuje każdy folder z `mods/`, więc zdublowana instalacja może uruchomić dwa runtime'y naraz.
+5. Uruchom grę. Jeśli gra już działa, użyj `Reload Mods` w CET; jeśli po reloadzie marker się nie pojawia, zrób pełny restart gry.
+6. Wczytaj save. Domyślnie mod sam startuje po krótkim opóźnieniu i ustawia marker fali 1 na mapie.
 
 Log działania moda zapisuje się w pliku `SamuraiWaves.log` w folderze moda.
+
+Po poprawnym załadowaniu `SamuraiWaves.log` powinien zawierać linie podobne do:
+
+```text
+[Samurai Waves v0.9.22] Loaded
+Starting mission | source=auto-start
+Wave marker registered | wave=1
+```
 
 ### Jak Używać
 
@@ -243,6 +295,16 @@ Jeśli klikniesz ręcznie inny cel na mapie, gra może zastąpić trasę Samurai
 #### Marker Jest Na Mapie, Ale Nie Ma Trasy
 
 Poczekaj sekundę lub dwie; mod cyklicznie odświeża trasę. Jeśli nadal jej nie ma, otwórz dużą mapę, wybierz marker Samurai Waves, zamknij mapę i przejdź albo przejedź kilka metrów. Gra czasem potrzebuje aktywnego route carriera, zanim minimapa przyjmie trasę.
+
+#### Pierwszy Marker Się Nie Pojawia
+
+Sprawdź, czy aktywny folder ma dokładnie ścieżkę `mods/SamuraiWaves/` i czy `init.lua` leży bezpośrednio w tym folderze. Potem otwórz `SamuraiWaves.log`.
+
+- Brak linii `Loaded` oznacza, że CET nie załadował folderu moda.
+- `Loaded` bez `Starting mission` zwykle oznacza, że save nie doszedł jeszcze do rozgrywki albo `AUTO_START_ENABLED` jest wyłączone.
+- `Wave marker route not ready; pending retry` oznacza, że mod ponawia aktywację trasy. Otwórz dużą mapę raz, zamknij ją i poczekaj kilka sekund.
+
+Jeśli wcześniej instalowałeś `Waves` albo `StaticShooters`, upewnij się, że te foldery są usunięte albo ich pliki `init.lua` są wyłączone.
 
 #### Marker Jest, Ale NPC Się Nie Pojawiają
 

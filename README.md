@@ -1,12 +1,12 @@
-# Waves
+# Samurai Waves
 
 ## English
 
-Waves is a Cyberpunk 2077 mod built on Cyber Engine Tweaks. It adds a sequence of enemy waves, map/GPS navigation between locations, guarded stash rewards, and debug hotkeys for testing encounters.
+Samurai Waves is a Cyberpunk 2077 mod built on Cyber Engine Tweaks. It adds a sequence of enemy waves, map/GPS navigation between locations, guarded stash rewards, and debug hotkeys for testing encounters.
 
 The mod is built around authored wave locations. Each wave can define its own NPC records, spawn line or spawn points, marker position, search behavior, spawn retries, and reward.
 
-Current version: `0.9.16`. `Waves.log` includes the version in its log prefix, for example `[Waves v0.9.16]`, so bug reports can always be tied to a specific build.
+Current version: `0.9.22`. `SamuraiWaves.log` includes the version in its log prefix, for example `[Samurai Waves v0.9.22]`, so bug reports can always be tied to a specific build.
 
 ### Requirements
 
@@ -23,18 +23,18 @@ The mod does not require Redscript, ArchiveXL, TweakXL, or Native Settings UI.
 2. Put the mod folder here:
 
 ```text
-Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/Waves
+Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/SamuraiWaves
 ```
 
 3. Make sure `init.lua`, `helper.lua`, `config/`, and `src/` are directly inside the mod folder.
 4. Start or restart the game. If the game is already running, use CET's reload mods option.
-5. Start or accept the invitation through the companion SMS/shard content, or use `Waves - start mission` as a debug shortcut.
+5. Start or reload the game. By default the mod starts the mission automatically and places the wave 1 marker on the map.
 
-The runtime log is written to `Waves.log` in the mod folder.
+The runtime log is written to `SamuraiWaves.log` in the mod folder.
 
 ### How To Use
 
-1. Accept the invitation through the companion native content. The CET runtime watches the configured invitation fact and starts the contract from wave 1 when it becomes active.
+1. Load into the game. The CET runtime starts the contract automatically and places the wave 1 marker on the map.
 2. The mod places a wave marker on the map and asks the game for a GPS route.
 3. Go to the marked location. By default, the wave starts when the player is within `150m` of the marker.
 4. Defeat the enemies.
@@ -42,7 +42,7 @@ The runtime log is written to `Waves.log` in the mod folder.
 6. After the wave is cleared, the stash reward is paid and the next wave marker replaces the old one.
 7. Repeat until all waves are cleared.
 
-The invitation bridge is fact-based: native SMS, shard, or quest content should set `waves_invitation_accepted` to `1`. The CET runtime detects it, resets it, and starts the mission. `Waves - start mission` remains as a debug shortcut only.
+The mission also still supports the invitation bridge: native SMS, shard, or quest content can set `samurai_waves_invitation_accepted` to `1`. The CET runtime detects it, resets it, and starts the mission when auto-start is disabled or has not already run. `Samurai Waves - start mission` remains as a debug shortcut.
 
 Each wave has a reward configured in `config/waves.lua`. The reward is granted by script after the wave is cleared; it is not a physical loot container.
 
@@ -52,16 +52,16 @@ Some waves can define `playerWeaponRule`. The built-in `katanaOnly` rule removes
 
 Bind these in the CET overlay:
 
-- `Waves - start mission`: starts from wave 1 and places the first marker.
-- `Waves - stop mission`: stops the mission, clears markers, and despawns tracked NPCs.
-- `Waves - force Wave X`: starts a specific wave for testing.
-- `Waves - force aggro all`: forces spawned NPCs into hostile behavior.
-- `Waves - chase player all`: reissues chase/aggro behavior.
-- `Waves - despawn all NPCs`: despawns all tracked NPCs.
-- `Waves - kill all spawned NPCs`: debug clear for currently tracked NPCs.
-- `Waves - debug state`: writes mission and NPC state to `Waves.log`.
-- `Waves - test marker on player`: creates a marker at the player's current position.
-- `Waves - show HUD countdown`: debug display for HUD timing.
+- `Samurai Waves - start mission`: starts from wave 1 and places the first marker.
+- `Samurai Waves - stop mission`: stops the mission, clears markers, and despawns tracked NPCs.
+- `Samurai Waves - force Wave X`: starts a specific wave for testing.
+- `Samurai Waves - force aggro all`: forces spawned NPCs into hostile behavior.
+- `Samurai Waves - chase player all`: reissues chase/aggro behavior.
+- `Samurai Waves - despawn all NPCs`: despawns all tracked NPCs.
+- `Samurai Waves - kill all spawned NPCs`: debug clear for currently tracked NPCs.
+- `Samurai Waves - debug state`: writes mission and NPC state to `SamuraiWaves.log`.
+- `Samurai Waves - test marker on player`: creates a marker at the player's current position.
+- `Samurai Waves - show HUD countdown`: debug display for HUD timing.
 
 ### Configuration
 
@@ -74,7 +74,9 @@ Main configuration files:
 Useful values:
 
 - `START_TRIGGER_DISTANCE`: distance from the marker at which a wave starts.
-- `INVITATION_ACCEPTED_FACT`: quest fact watched by the CET runtime. Set it to `1` from SMS/shard/quest content to start wave 1.
+- `AUTO_START_ENABLED`: when `true`, starts the mission automatically after the player loads in.
+- `AUTO_START_DELAY`: short delay before auto-start places the wave 1 marker.
+- `INVITATION_ACCEPTED_FACT`: quest fact watched by the CET runtime. Set it to `1` from SMS/shard/quest content to start wave 1. The default fact is `samurai_waves_invitation_accepted`.
 - `INVITATION_FACT_POLL_INTERVAL`: how often the runtime checks the invitation fact.
 - `MARKER_ROUTE_REFRESH_INTERVAL`: how often the mod asks the game to refresh the active route.
 - `PLAYER_WEAPON_RULE_INTERVAL`: how often a per-wave player weapon rule enforces equipped weapon slots.
@@ -92,15 +94,15 @@ Useful values:
 
 Open the full map once after the wave marker appears, then close it. Cyberpunk 2077 often does not propagate custom routes to the minimap until the full map initializes or refreshes the active tracked route.
 
-If you manually click another destination on the map, the game can replace the Waves route with your manual waypoint. Open the full map again and select the Waves marker, or clear the manual waypoint and wait for the mod to refresh the route.
+If you manually click another destination on the map, the game can replace the Samurai Waves route with your manual waypoint. Open the full map again and select the Samurai Waves marker, or clear the manual waypoint and wait for the mod to refresh the route.
 
 #### The map marker exists, but there is no route
 
-Wait a second or two; the mod refreshes route tracking periodically. If the route still does not appear, open the full map, select the Waves marker, close the map, and move a few meters. The game sometimes needs an active route carrier before the minimap accepts the route.
+Wait a second or two; the mod refreshes route tracking periodically. If the route still does not appear, open the full map, select the Samurai Waves marker, close the map, and move a few meters. The game sometimes needs an active route carrier before the minimap accepts the route.
 
 #### The marker exists, but NPCs do not appear
 
-Check `Waves.log`. Useful lines:
+Check `SamuraiWaves.log`. Useful lines:
 
 - `Queueing Wave ...`: the wave started.
 - `RequestUnitSpawn OK`: the game accepted a spawn request.
@@ -126,29 +128,29 @@ Wave tuning tips:
 
 This should be guarded against. If all tracked NPCs become `unknown` before any confirmed defeat, the mod restarts that wave up to `WAVE_UNKNOWN_RESTART_LIMIT` times instead of paying the reward.
 
-If you still see an unwanted clear, keep the relevant `Waves.log` lines around `Wave completion`, `unknown`, and `defeated`.
+If you still see an unwanted clear, keep the relevant `SamuraiWaves.log` lines around `Wave completion`, `unknown`, and `defeated`.
 
 #### Hotkeys do not appear in CET
 
-Check the folder structure and reload CET mods. `init.lua` must be directly inside the mod folder. Then check `Waves.log` and the CET console for Lua load errors.
+Check the folder structure and reload CET mods. `init.lua` must be directly inside the mod folder. Then check `SamuraiWaves.log` and the CET console for Lua load errors.
 
-#### The old log file still exists
+#### Old Log Files Still Exist
 
-Older builds wrote to `StaticShooters.log`. Current builds write to `Waves.log`. The old file can be ignored or deleted.
+Older build logs can be ignored or deleted. Current builds write to `SamuraiWaves.log`.
 
 ### Development Notes
 
-The local development folder may still be named `StaticShooters`, but the runtime mod name is `Waves`. For a fresh install, use a folder named `Waves` under CET's `mods` directory.
+For a fresh install, use a folder named `SamuraiWaves` under CET's `mods` directory.
 
 The default repository branch is `master`.
 
 ## Polski
 
-Waves to mod do Cyberpunk 2077 oparty o Cyber Engine Tweaks. Dodaje sekwencję fal przeciwników, markery mapy, prowadzenie GPS między lokacjami, nagrody za pilnowane skrytki oraz hotkeye debugowe do testowania starć.
+Samurai Waves to mod do Cyberpunk 2077 oparty o Cyber Engine Tweaks. Dodaje sekwencję fal przeciwników, markery mapy, prowadzenie GPS między lokacjami, nagrody za pilnowane skrytki oraz hotkeye debugowe do testowania starć.
 
 Mod jest zbudowany wokół ręcznie ustawianych fal. Każda fala może mieć własne rekordy NPC, linię albo punkty spawnu, pozycję markera, zachowanie szukania gracza, retry spawnu i nagrodę.
 
-Aktualna wersja: `0.9.16`. `Waves.log` zawiera wersję w prefixie logu, np. `[Waves v0.9.16]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
+Aktualna wersja: `0.9.22`. `SamuraiWaves.log` zawiera wersję w prefixie logu, np. `[Samurai Waves v0.9.22]`, dzięki czemu zgłoszenia bugów można zawsze powiązać z konkretnym buildem.
 
 ### Wymagania
 
@@ -165,18 +167,18 @@ Mod nie wymaga Redscript, ArchiveXL, TweakXL ani Native Settings UI.
 2. Umieść folder moda tutaj:
 
 ```text
-Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/Waves
+Cyberpunk 2077/bin/x64/plugins/cyber_engine_tweaks/mods/SamuraiWaves
 ```
 
 3. Upewnij się, że bezpośrednio w folderze moda są pliki `init.lua`, `helper.lua` oraz katalogi `config/` i `src/`.
 4. Uruchom albo zrestartuj grę. Jeśli gra już działa, użyj opcji reload mods w CET.
-5. Rozpocznij albo zaakceptuj zaproszenie przez natywną zawartość SMS/shard, albo użyj `Waves - start mission` jako skrótu debugowego.
+5. Uruchom albo przeładuj grę. Domyślnie mod sam startuje misję i ustawia marker fali 1 na mapie.
 
-Log działania moda zapisuje się w pliku `Waves.log` w folderze moda.
+Log działania moda zapisuje się w pliku `SamuraiWaves.log` w folderze moda.
 
 ### Jak Używać
 
-1. Zaakceptuj zaproszenie przez natywną zawartość. Runtime CET obserwuje skonfigurowany quest fact i startuje kontrakt od fali 1, gdy fact zostanie aktywowany.
+1. Wczytaj grę. Runtime CET sam startuje kontrakt i ustawia marker fali 1 na mapie.
 2. Mod ustawi marker fali na mapie i poprosi grę o trasę GPS.
 3. Jedź albo idź do zaznaczonego miejsca. Domyślnie fala startuje, gdy gracz jest w promieniu `150m` od markera.
 4. Pokonaj przeciwników.
@@ -184,7 +186,7 @@ Log działania moda zapisuje się w pliku `Waves.log` w folderze moda.
 6. Po wyczyszczeniu fali mod wypłaca nagrodę ze skrytki, a marker kolejnej fali zastępuje stary marker.
 7. Powtarzaj aż do zakończenia wszystkich fal.
 
-Most zaproszenia działa przez quest fact: natywny SMS, shard albo quest powinien ustawić `waves_invitation_accepted` na `1`. Runtime CET wykryje to, zresetuje fact i wystartuje misję. `Waves - start mission` zostaje tylko jako skrót debugowy.
+Most zaproszenia nadal działa przez quest fact: natywny SMS, shard albo quest może ustawić `samurai_waves_invitation_accepted` na `1`. Runtime CET wykryje to, zresetuje fact i wystartuje misję, jeśli autostart jest wyłączony albo jeszcze nie ruszył. `Samurai Waves - start mission` zostaje jako skrót debugowy.
 
 Każda fala ma nagrodę skonfigurowaną w `config/waves.lua`. Nagroda jest wypłacana skryptem po wyczyszczeniu fali; to nie jest fizyczny kontener z lootem.
 
@@ -194,16 +196,16 @@ Wybrane fale moga definiowac `playerWeaponRule`. Wbudowana regula `katanaOnly` u
 
 Hotkeye przypisuje się w nakładce CET:
 
-- `Waves - start mission`: startuje misję od fali 1 i ustawia pierwszy marker.
-- `Waves - stop mission`: zatrzymuje misję, czyści markery i despawnuje śledzonych NPC.
-- `Waves - force Wave X`: startuje wybraną falę do testów.
-- `Waves - force aggro all`: wymusza wrogie zachowanie u zespawnowanych NPC.
-- `Waves - chase player all`: ponawia zachowanie pościgu/aggro.
-- `Waves - despawn all NPCs`: despawnuje wszystkich śledzonych NPC.
-- `Waves - kill all spawned NPCs`: debugowe zabicie aktualnie śledzonych NPC.
-- `Waves - debug state`: zapisuje stan misji i NPC do `Waves.log`.
-- `Waves - test marker on player`: tworzy marker w aktualnej pozycji gracza.
-- `Waves - show HUD countdown`: debugowy podgląd komunikatów HUD.
+- `Samurai Waves - start mission`: startuje misję od fali 1 i ustawia pierwszy marker.
+- `Samurai Waves - stop mission`: zatrzymuje misję, czyści markery i despawnuje śledzonych NPC.
+- `Samurai Waves - force Wave X`: startuje wybraną falę do testów.
+- `Samurai Waves - force aggro all`: wymusza wrogie zachowanie u zespawnowanych NPC.
+- `Samurai Waves - chase player all`: ponawia zachowanie pościgu/aggro.
+- `Samurai Waves - despawn all NPCs`: despawnuje wszystkich śledzonych NPC.
+- `Samurai Waves - kill all spawned NPCs`: debugowe zabicie aktualnie śledzonych NPC.
+- `Samurai Waves - debug state`: zapisuje stan misji i NPC do `SamuraiWaves.log`.
+- `Samurai Waves - test marker on player`: tworzy marker w aktualnej pozycji gracza.
+- `Samurai Waves - show HUD countdown`: debugowy podgląd komunikatów HUD.
 
 ### Konfiguracja
 
@@ -216,7 +218,9 @@ Główne pliki konfiguracyjne:
 Przydatne ustawienia:
 
 - `START_TRIGGER_DISTANCE`: odległość od markera, przy której fala startuje.
-- `INVITATION_ACCEPTED_FACT`: quest fact obserwowany przez runtime CET. Ustaw go na `1` z SMS-a/sharda/questu, żeby wystartować wave 1.
+- `AUTO_START_ENABLED`: gdy jest `true`, startuje misję automatycznie po wczytaniu gracza.
+- `AUTO_START_DELAY`: krótkie opóźnienie przed ustawieniem markera fali 1 przez autostart.
+- `INVITATION_ACCEPTED_FACT`: quest fact obserwowany przez runtime CET. Ustaw go na `1` z SMS-a/sharda/questu, żeby wystartować wave 1. Domyślny fact to `samurai_waves_invitation_accepted`.
 - `INVITATION_FACT_POLL_INTERVAL`: jak często runtime sprawdza quest fact zaproszenia.
 - `MARKER_ROUTE_REFRESH_INTERVAL`: jak często mod próbuje odświeżyć aktywną trasę.
 - `PLAYER_WEAPON_RULE_INTERVAL`: jak często reguła broni gracza wymusza aktywne sloty broni.
@@ -234,15 +238,15 @@ Przydatne ustawienia:
 
 Otwórz dużą mapę raz po pojawieniu się markera fali, a potem ją zamknij. Cyberpunk 2077 często nie przekazuje customowej trasy na minimapę, dopóki duża mapa nie zainicjuje albo nie odświeży aktywnego śledzenia.
 
-Jeśli klikniesz ręcznie inny cel na mapie, gra może zastąpić trasę Waves własnym waypointem. Otwórz dużą mapę ponownie i wybierz marker Waves albo usuń ręczny waypoint i poczekaj, aż mod odświeży trasę.
+Jeśli klikniesz ręcznie inny cel na mapie, gra może zastąpić trasę Samurai Waves własnym waypointem. Otwórz dużą mapę ponownie i wybierz marker Samurai Waves albo usuń ręczny waypoint i poczekaj, aż mod odświeży trasę.
 
 #### Marker Jest Na Mapie, Ale Nie Ma Trasy
 
-Poczekaj sekundę lub dwie; mod cyklicznie odświeża trasę. Jeśli nadal jej nie ma, otwórz dużą mapę, wybierz marker Waves, zamknij mapę i przejdź albo przejedź kilka metrów. Gra czasem potrzebuje aktywnego route carriera, zanim minimapa przyjmie trasę.
+Poczekaj sekundę lub dwie; mod cyklicznie odświeża trasę. Jeśli nadal jej nie ma, otwórz dużą mapę, wybierz marker Samurai Waves, zamknij mapę i przejdź albo przejedź kilka metrów. Gra czasem potrzebuje aktywnego route carriera, zanim minimapa przyjmie trasę.
 
 #### Marker Jest, Ale NPC Się Nie Pojawiają
 
-Sprawdź `Waves.log`. Szczególnie przydatne linie:
+Sprawdź `SamuraiWaves.log`. Szczególnie przydatne linie:
 
 - `Queueing Wave ...`: fala została uruchomiona.
 - `RequestUnitSpawn OK`: gra zaakceptowała request spawnu.
@@ -268,18 +272,18 @@ Do strojenia fal:
 
 To powinno być blokowane. Jeśli wszyscy śledzeni NPC przejdą w `unknown` przed jakimkolwiek potwierdzonym pokonaniem, mod restartuje tę falę do `WAVE_UNKNOWN_RESTART_LIMIT` razy zamiast wypłacać nagrodę.
 
-Jeśli nadal zobaczysz niechciane zaliczenie, zachowaj fragment `Waves.log` z liniami `Wave completion`, `unknown` i `defeated`.
+Jeśli nadal zobaczysz niechciane zaliczenie, zachowaj fragment `SamuraiWaves.log` z liniami `Wave completion`, `unknown` i `defeated`.
 
 #### Hotkeye Nie Pojawiają Się W CET
 
-Sprawdź strukturę folderu i przeładuj mody w CET. Plik `init.lua` musi być bezpośrednio w folderze moda. Potem sprawdź `Waves.log` oraz konsolę CET pod kątem błędów ładowania Lua.
+Sprawdź strukturę folderu i przeładuj mody w CET. Plik `init.lua` musi być bezpośrednio w folderze moda. Potem sprawdź `SamuraiWaves.log` oraz konsolę CET pod kątem błędów ładowania Lua.
 
-#### Nadal Istnieje Stary Plik Logu
+#### Nadal Istnieją Stare Pliki Logu
 
-Starsze buildy pisały do `StaticShooters.log`. Aktualna wersja pisze do `Waves.log`. Stary plik można zignorować albo usunąć.
+Stare logi z wcześniejszych buildów można zignorować albo usunąć. Aktualna wersja pisze do `SamuraiWaves.log`.
 
 ### Notatki Developerskie
 
-Lokalny folder developerski może nadal nazywać się `StaticShooters`, ale runtime'owa nazwa moda to `Waves`. Przy świeżej instalacji użyj folderu `Waves` w katalogu `mods` CET.
+Przy świeżej instalacji użyj folderu `SamuraiWaves` w katalogu `mods` CET.
 
 Domyślna gałąź repozytorium to `master`.

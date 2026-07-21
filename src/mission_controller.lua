@@ -10,7 +10,7 @@ end
 
 function MissionController.new(deps)
     return setmetatable({
-        modName = deps.modName or "Waves",
+        modName = deps.modName or "Samurai Waves",
         modVersion = deps.modVersion or "unknown",
         state = deps.state,
         settings = deps.settings,
@@ -23,7 +23,9 @@ function MissionController.new(deps)
         hud = deps.hud,
         ai = deps.ai,
         spawner = deps.spawner,
-        log = deps.log
+        log = deps.log,
+        autoStartHandled = false,
+        autoStartTimer = 0
     }, MissionController)
 end
 
@@ -305,8 +307,36 @@ function MissionController:isInvitationEnabled()
     return self.settings.INVITATION_ENABLED ~= false
 end
 
+function MissionController:isAutoStartEnabled()
+    return self.settings.AUTO_START_ENABLED == true
+end
+
 function MissionController:getInvitationAcceptedFact()
-    return self.settings.INVITATION_ACCEPTED_FACT or "waves_invitation_accepted"
+    return self.settings.INVITATION_ACCEPTED_FACT or "samurai_waves_invitation_accepted"
+end
+
+function MissionController:updateAutoStart(delta)
+    if self.autoStartHandled then return end
+
+    if not self:isAutoStartEnabled() then
+        self.autoStartHandled = true
+        return
+    end
+
+    if self.state.missionActive then
+        self.autoStartHandled = true
+        return
+    end
+
+    if not Game.GetPlayer() then return end
+
+    self.autoStartTimer = self.autoStartTimer + delta
+
+    local delay = tonumber(self.settings.AUTO_START_DELAY) or 0
+    if self.autoStartTimer < delay then return end
+
+    self.autoStartHandled = true
+    self:startMission("auto-start")
 end
 
 function MissionController:getQuestFact(factName)
@@ -663,7 +693,7 @@ end
 function MissionController:updatePendingWaveMarker(delta)
     if not self.state.missionActive then return end
     if self.state.currentWaveIndex > 0 then return end
-    if self.state.markerActive then return end
+    if self.state.markerActive and self.state.markerRouteReady then return end
 
     if not self.state.pendingMarkerWaveIndex and self.state.highestWaveStarted < #self.waves then
         self.state.pendingMarkerWaveIndex = self.state.highestWaveStarted + 1
@@ -823,7 +853,7 @@ function MissionController:updateWaveCompletion()
         self.state.currentWaveIndex = 0
         self.state.missionActive = false
         self.markers:clear()
-        self.hud:show("Waves completed.")
+        self.hud:show("Samurai Waves completed.")
         self.log("Mission completed")
     end
 end
@@ -914,6 +944,7 @@ function MissionController:debugState()
     self.log("modVersion=" .. tostring(self.modVersion))
     self.log("missionActive=" .. tostring(self.state.missionActive))
     self.log("markerActive=" .. tostring(self.state.markerActive))
+    self.log("markerRouteReady=" .. tostring(self.state.markerRouteReady))
     self.log("markerTriggerActive=" .. tostring(self.state.markerTriggerActive))
     self.log("currentWaveIndex=" .. tostring(self.state.currentWaveIndex))
     self.log("highestWaveStarted=" .. tostring(self.state.highestWaveStarted))
@@ -996,19 +1027,19 @@ function MissionController:debugState()
 end
 
 function MissionController:registerHotkeys()
-    registerHotkey("WavesStartMission", "Waves - start mission", function()
+    registerHotkey("WavesStartMission", "Samurai Waves - start mission", function()
         self:startMission()
     end)
 
-    registerHotkey("WavesStopMission", "Waves - stop mission", function()
+    registerHotkey("WavesStopMission", "Samurai Waves - stop mission", function()
         self:stopMission()
     end)
 
-    registerHotkey("WavesTestMarkerOnPlayer", "Waves - test marker on player", function()
+    registerHotkey("WavesTestMarkerOnPlayer", "Samurai Waves - test marker on player", function()
         self.markers:testMarkerOnPlayer()
     end)
 
-    registerHotkey("WavesDebugState", "Waves - debug state", function()
+    registerHotkey("WavesDebugState", "Samurai Waves - debug state", function()
         self:debugState()
     end)
 
@@ -1029,7 +1060,7 @@ function MissionController:registerHotkeys()
     end
 
     local function getForceWaveHotkeyDescription(hotkeyIndex, wave, fallbackIndex)
-        local description = "Waves - force Wave " .. tostring(hotkeyIndex)
+        local description = "Samurai Waves - force Wave " .. tostring(hotkeyIndex)
         local waveName = wave and wave.name or nil
 
         if type(waveName) == "string" then
@@ -1087,31 +1118,31 @@ function MissionController:registerHotkeys()
             registerForceWaveHotkey(
                 waveIndex,
                 waveIndex,
-                "Waves - force list item " .. tostring(waveIndex) .. " - " .. tostring(wave and wave.name or "unknown")
+                "Samurai Waves - force list item " .. tostring(waveIndex) .. " - " .. tostring(wave and wave.name or "unknown")
             )
         end
     end
 
-    registerHotkey("WavesForceAggro", "Waves - force aggro all", function()
+    registerHotkey("WavesForceAggro", "Samurai Waves - force aggro all", function()
         self.log("Manual force aggro all")
         self.ai:forceAggroAll()
     end)
 
-    registerHotkey("WavesChasePlayer", "Waves - chase player all", function()
+    registerHotkey("WavesChasePlayer", "Samurai Waves - chase player all", function()
         self.log("Manual chase player all")
         self.ai:forceAggroAll()
     end)
 
-    registerHotkey("WavesDespawnAll", "Waves - despawn all NPCs", function()
+    registerHotkey("WavesDespawnAll", "Samurai Waves - despawn all NPCs", function()
         self.spawner:despawnAll()
     end)
 
-    registerHotkey("WavesKillAll", "Waves - kill all spawned NPCs", function()
+    registerHotkey("WavesKillAll", "Samurai Waves - kill all spawned NPCs", function()
         local attempted, affected = self.ai:killAllSpawned()
         self.hud:show("Kill all spawned NPCs: " .. tostring(affected) .. "/" .. tostring(attempted))
     end)
 
-    registerHotkey("WavesShowHUD", "Waves - show HUD countdown", function()
+    registerHotkey("WavesShowHUD", "Samurai Waves - show HUD countdown", function()
         self.log("Manual show HUD countdown")
         self.hud:updateCountdown(true)
     end)
@@ -1192,6 +1223,7 @@ function MissionController:onUpdate(delta)
     self.state.spawnTimeoutTimer = self.state.spawnTimeoutTimer - delta
     self.state.waveCompletionTimer = self.state.waveCompletionTimer - delta
 
+    self:updateAutoStart(delta)
     self:updateInvitation(delta)
     self:checkMission()
     self:updatePendingWaveMarker(delta)

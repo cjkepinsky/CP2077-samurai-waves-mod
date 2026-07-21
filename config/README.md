@@ -1,6 +1,8 @@
-# Waves Config
+# Samurai Waves Config
 
 `settings.lua` contains global tuning values: timers, chase/search behavior, spawn retry limits, and default safe spawn distances.
+
+`AUTO_START_ENABLED = true` starts the contract automatically after the player is available in-game, using the same flow as the `Samurai Waves - start mission` hotkey. `AUTO_START_DELAY` adds a short delay before placing the wave 1 map marker.
 
 The search settings split NPC behavior into three ranges: slow investigation toward the player area, forced combat when the player is close, and full chase after combat starts.
 
@@ -8,7 +10,7 @@ Set `POST_SPAWN_TELEPORT_CORRECTION_ENABLED = false` to disable all post-spawn t
 
 `SPAWN_REQUEST_MAX_DISTANCE` delays actual NPC spawn requests until the player is close enough to each configured spawn point. This prevents the game from accepting a spawn request in an unloaded area and returning zero spawned objects.
 
-Invitation settings live in `settings.lua`. Native SMS, shard, or quest content should set `INVITATION_ACCEPTED_FACT` to `1`; the CET runtime polls that fact with `INVITATION_FACT_POLL_INTERVAL` and starts the mission from wave 1.
+Invitation settings live in `settings.lua`. Native SMS, shard, or quest content should set `INVITATION_ACCEPTED_FACT` to `1`; the CET runtime polls that fact with `INVITATION_FACT_POLL_INTERVAL` and starts Samurai Waves from wave 1.
 
 `waves.lua` contains gameplay data only:
 
@@ -82,4 +84,4 @@ Runtime code lives in `../src/`:
 - `hud.lua`: player-facing messages.
 - `state.lua`: mutable mission/runtime state.
 
-Useful debug hotkeys include `WavesForceWaveX`, `WavesForceAggro`, `WavesDespawnAll`, and `WavesKillAll`.
+Useful debug hotkeys include the Samurai Waves force-wave, aggro, despawn, and kill shortcuts.

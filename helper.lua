@@ -59,14 +59,16 @@ function Helper.nowStamp()
     return "t+?"
 end
 
-function Helper.makeLogger(modName)
+function Helper.makeLogger(modName, logFileName)
+    logFileName = logFileName or "SamuraiWaves.log"
+
     return function(msg)
         local line = "[" .. tostring(modName) .. "][" .. Helper.nowStamp() .. "] " .. tostring(msg)
 
         print(line)
 
         pcall(function()
-            local file = io.open(MOD_DIR .. "Waves.log", "a")
+            local file = io.open(MOD_DIR .. logFileName, "a")
 
             if file then
                 file:write(line .. "\n")

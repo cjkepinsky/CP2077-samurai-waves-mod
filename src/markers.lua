@@ -244,7 +244,7 @@ function Markers:createRouteMappinData(style)
         self:setMappinType(mappinData, style.mappinType, false)
         local variantName = self:setMappinVariant(mappinData, style.variants)
 
-        pcall(function() mappinData.debugCaption = "Waves" end)
+        pcall(function() mappinData.debugCaption = "Samurai Waves" end)
 
         return mappinData, variantName
     end
@@ -254,7 +254,7 @@ function Markers:createRouteMappinData(style)
     mappinData.visibleThroughWalls = true
     self:setMappinType(mappinData, style.mappinType, true)
     local variantName = self:setMappinVariant(mappinData, style.variants)
-    pcall(function() mappinData.debugCaption = "Waves" end)
+    pcall(function() mappinData.debugCaption = "Samurai Waves" end)
 
     return mappinData, variantName
 end
@@ -297,6 +297,7 @@ function Markers:clear()
     end
 
     self.state.markerActive = false
+    self.state.markerRouteReady = false
     self.state.markerTriggerActive = false
     self.state.currentMarkerWaveIndex = nil
     self.state.activeMappinPos = nil
@@ -319,12 +320,15 @@ function Markers:setWaveMarker(waveIndex)
 
     if result then
         self.state.activeMappin = result
-        self.state.markerActive = true
-        self.state.markerTriggerActive = not (self.state.currentWaveIndex and self.state.currentWaveIndex > 0)
         self.state.currentMarkerWaveIndex = waveIndex
         self.state.activeMappinPos = self:copyPos(markerPos)
         self.state.markerRouteRefreshTimer = self:getRouteRefreshInterval()
         local markerOk, routeOk, routeCarrier = self:activateRoute(result, pos)
+        self.state.markerActive = markerOk == true
+        self.state.markerRouteReady = routeOk == true
+        self.state.markerTriggerActive =
+            routeOk == true and
+            not (self.state.currentWaveIndex and self.state.currentWaveIndex > 0)
 
         self.log(
             "Wave marker registered | wave=" ..
@@ -346,7 +350,16 @@ function Markers:setWaveMarker(waveIndex)
             " | routeCarrier=" ..
             tostring(routeCarrier)
         )
-        return markerOk
+        if markerOk and not routeOk then
+            self.log(
+                "Wave marker route not ready; pending retry | wave=" ..
+                tostring(waveIndex) ..
+                " | routeCarrier=" ..
+                tostring(routeCarrier)
+            )
+        end
+
+        return markerOk and routeOk
     end
 
     self.log("Wave marker FAILED | wave=" .. tostring(waveIndex) .. " | err=" .. tostring(err))
@@ -368,6 +381,7 @@ function Markers:setCombatMarker(posData, waveIndex)
     if result then
         self.state.activeMappin = result
         self.state.markerActive = false
+        self.state.markerRouteReady = false
         self.state.markerTriggerActive = false
         self.state.currentMarkerWaveIndex = nil
         self.state.activeMappinPos = self:copyPos(posData)
@@ -405,6 +419,7 @@ function Markers:testMarkerOnPlayer()
     if result then
         self.state.activeMappin = result
         self.state.markerActive = true
+        self.state.markerRouteReady = true
         self.state.markerTriggerActive = false
         self.state.activeMappinPos = {
             x = playerPos.x,
@@ -469,6 +484,7 @@ function Markers:recreateActiveWaveMarker(reason)
 
     self.state.activeMappin = nil
     self.state.markerActive = false
+    self.state.markerRouteReady = false
     self.state.markerTriggerActive = false
     self.state.currentMarkerWaveIndex = nil
     self.state.activeMappinPos = nil

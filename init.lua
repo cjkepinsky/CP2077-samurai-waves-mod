@@ -1,6 +1,7 @@
-local MOD_NAME = "Waves"
-local MOD_VERSION = "0.9.21"
+local MOD_NAME = "Samurai Waves"
+local MOD_VERSION = "0.9.22"
 local MOD_LOG_NAME = MOD_NAME .. " v" .. MOD_VERSION
+local MOD_LOG_FILE = "SamuraiWaves.log"
 
 print("[" .. MOD_LOG_NAME .. "] file loaded")
 
@@ -37,7 +38,7 @@ local function loadHelper()
 end
 
 local Helper = loadHelper()
-local log = Helper.makeLogger(MOD_LOG_NAME)
+local log = Helper.makeLogger(MOD_LOG_NAME, MOD_LOG_FILE)
 
 -- =========================================================
 -- Configuration

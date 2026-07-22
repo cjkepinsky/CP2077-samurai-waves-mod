@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.25
+
+- Added cleanup for stale tracked Samurai Waves markers that can persist in saved games after loading a different wave state.
+- Wave markers now clear the currently tracked route before registering the current wave marker, avoiding route-carrier reuse from older markers.
+
 ## 0.9.23
 
 - Fixed wave markers that were visible but did not start the wave when Cyberpunk refused GPS route tracking.

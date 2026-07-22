@@ -73,6 +73,81 @@ function Markers:getManuallyTrackedMappin()
     return trackedId, trackedMappin
 end
 
+function Markers:getMappinWorldPosition(mappin)
+    if not mappin then return nil end
+
+    local attempts = {
+        function() return mappin:GetWorldPosition() end,
+        function() return mappin:GetPosition() end
+    }
+
+    for _, attempt in ipairs(attempts) do
+        local ok, pos = pcall(attempt)
+
+        if ok and pos and pos.x and pos.y and pos.z then
+            return pos
+        end
+    end
+
+    return nil
+end
+
+function Markers:findWaveMarkerNear(pos)
+    if not pos or not self.planner or not self.planner.waves then return nil, nil end
+
+    local bestWaveIndex = nil
+    local bestDistance = nil
+    local threshold = 8.0
+
+    for waveIndex = 1, #self.planner.waves do
+        local markerPos = self.planner:getWaveMarkerPos(waveIndex)
+
+        if markerPos then
+            local dist = self.geometry.distance(pos, markerPos)
+
+            if dist <= threshold and (not bestDistance or dist < bestDistance) then
+                bestWaveIndex = waveIndex
+                bestDistance = dist
+            end
+        end
+    end
+
+    return bestWaveIndex, bestDistance
+end
+
+function Markers:clearTrackedWaveMappin(reason)
+    local trackedId, trackedMappin = self:getManuallyTrackedMappin()
+    if not trackedId or not trackedMappin then return false end
+
+    local pos = self:getMappinWorldPosition(trackedMappin)
+    local waveIndex, dist = self:findWaveMarkerNear(pos)
+
+    if not waveIndex then return false end
+
+    self.log(
+        "Clearing tracked Samurai Waves marker | wave=" ..
+        tostring(waveIndex) ..
+        " | distance=" ..
+        tostring(dist) ..
+        " | reason=" ..
+        tostring(reason or "unknown")
+    )
+
+    pcall(function()
+        Game.GetMappinSystem():UntrackMappin()
+    end)
+
+    pcall(function()
+        Game.GetMappinSystem():SetMappinActive(trackedId, false)
+    end)
+
+    local ok = pcall(function()
+        Game.GetMappinSystem():UnregisterMappin(trackedId)
+    end)
+
+    return ok == true
+end
+
 function Markers:applyRouteCarrier(mappinId)
     local trackedId = self:getManuallyTrackedMappin()
 
@@ -178,10 +253,18 @@ function Markers:resetRouteCarrierAlternative()
     self.state.activeRouteCarrierMappin = nil
 end
 
-function Markers:clearTrackedRoute()
-    pcall(function()
+function Markers:clearTrackedRoute(reason)
+    local ok = pcall(function()
         Game.GetMappinSystem():UntrackMappin()
     end)
+
+    self.state.activeRouteCarrierMappin = nil
+
+    if ok then
+        self.log("Tracked route cleared | reason=" .. tostring(reason or "unknown"))
+    end
+
+    return ok
 end
 
 function Markers:setMappinType(mappinData, mappinType, preferTweakDBID)
@@ -307,6 +390,8 @@ end
 
 function Markers:setWaveMarker(waveIndex)
     self:clear()
+    self:clearTrackedWaveMappin("before-wave-marker")
+    self:clearTrackedRoute("before-wave-marker")
 
     local markerPos = self.planner:getWaveMarkerPos(waveIndex)
     if not markerPos then
@@ -323,7 +408,10 @@ function Markers:setWaveMarker(waveIndex)
         self.state.currentMarkerWaveIndex = waveIndex
         self.state.activeMappinPos = self:copyPos(markerPos)
         self.state.markerRouteRefreshTimer = self:getRouteRefreshInterval()
-        local markerOk, routeOk, routeCarrier = self:activateRoute(result, pos)
+        local markerOk, routeOk, routeCarrier = self:activateRoute(result, pos, {
+            untrack = true,
+            allowCarrier = false
+        })
         self.state.markerActive = markerOk == true
         self.state.markerRouteReady = routeOk == true
         self.state.markerTriggerActive =
@@ -447,9 +535,13 @@ function Markers:refreshActiveWaveRoute(reason)
     if self.state.currentMarkerWaveIndex == nil then return false end
 
     local pos = self.geometry.toV4(self.state.activeMappinPos)
-    local ok = self:activateRoute(self.state.activeMappin, pos, { silent = true })
+    local markerOk, routeOk = self:activateRoute(self.state.activeMappin, pos, {
+        silent = true,
+        allowCarrier = false
+    })
+    self.state.markerRouteReady = routeOk == true
 
-    if not ok then
+    if not markerOk then
         self.log(
             "Marker route refresh FAILED | wave=" ..
             tostring(self.state.currentMarkerWaveIndex) ..
